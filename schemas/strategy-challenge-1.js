@@ -1,0 +1,822 @@
+// The handoff schema of schemas/strategy-challenge-1.json as a module: the page cannot import a .json
+// module under its security policy (connect-src blocks it, PLAN.md probe 19). tests/schemas.mjs holds the
+// two equal; change the JSON file and run `node tools/schema-module.mjs` to write this one again.
+export default {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "strategy-challenge-1.json",
+  "title": "strategy-challenge/1",
+  "description": "The handoff file every challenger exports and the Prototype Ideator reads without a model call (build brief 4.3). The same file in all four tools; a change to the shape means a new schema name.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "tool",
+    "created",
+    "language",
+    "mode",
+    "model",
+    "company",
+    "framework",
+    "issues",
+    "responses",
+    "figures",
+    "summary",
+    "sources",
+    "disclaimer"
+  ],
+  "properties": {
+    "schema": {
+      "const": "strategy-challenge/1"
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "version",
+        "url"
+      ],
+      "properties": {
+        "id": {
+          "enum": [
+            "bmc-challenger",
+            "swot-challenger",
+            "pestel-challenger"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://"
+        }
+      }
+    },
+    "created": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+    },
+    "language": {
+      "enum": [
+        "en",
+        "de"
+      ]
+    },
+    "mode": {
+      "enum": [
+        "simulation",
+        "live"
+      ]
+    },
+    "model": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "company": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "sector",
+        "country",
+        "description",
+        "fictional"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sector": {
+          "type": "string",
+          "pattern": "^[a-z_]+$"
+        },
+        "country": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$"
+        },
+        "description": {
+          "type": "string"
+        },
+        "fictional": {
+          "type": "boolean"
+        }
+      }
+    },
+    "framework": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/swot_framework"
+        },
+        {
+          "$ref": "#/$defs/pestel_framework"
+        },
+        {
+          "$ref": "#/$defs/bmc_framework"
+        }
+      ]
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/issue"
+      }
+    },
+    "responses": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/response"
+      }
+    },
+    "figures": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "at_stake_eur_year",
+        "left_eur_year",
+        "upside_eur_year",
+        "score",
+        "pressure"
+      ],
+      "properties": {
+        "at_stake_eur_year": {
+          "type": "number",
+          "minimum": 0
+        },
+        "left_eur_year": {
+          "type": "number",
+          "minimum": 0
+        },
+        "upside_eur_year": {
+          "type": "number",
+          "minimum": 0
+        },
+        "score": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "scale",
+            "before",
+            "after"
+          ],
+          "properties": {
+            "name": {
+              "enum": [
+                "resilience",
+                "efe",
+                "readiness"
+              ]
+            },
+            "scale": {
+              "enum": [
+                "0-100",
+                "1-4"
+              ]
+            },
+            "before": {
+              "type": "number"
+            },
+            "after": {
+              "type": "number"
+            }
+          }
+        },
+        "pressure": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "label",
+            "before",
+            "after",
+            "of"
+          ],
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1
+            },
+            "before": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "after": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "of": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "headline",
+        "text"
+      ],
+      "properties": {
+        "headline": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string"
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/source"
+      }
+    },
+    "disclaimer": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$defs": {
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "text",
+        "source"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "enum": [
+            "user",
+            "ai"
+          ]
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        },
+        "basis": {
+          "type": "string"
+        }
+      }
+    },
+    "swot_framework": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "areas"
+      ],
+      "properties": {
+        "type": {
+          "const": "swot"
+        },
+        "areas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "label",
+              "items"
+            ],
+            "properties": {
+              "id": {
+                "enum": [
+                  "strengths",
+                  "weaknesses",
+                  "opportunities",
+                  "threats"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/item"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "pestel_framework": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "areas"
+      ],
+      "properties": {
+        "type": {
+          "const": "pestel"
+        },
+        "areas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "label",
+              "items"
+            ],
+            "properties": {
+              "id": {
+                "enum": [
+                  "political",
+                  "economic",
+                  "social",
+                  "technological",
+                  "environmental",
+                  "legal"
+                ]
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/item"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "bmc_framework": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "areas"
+      ],
+      "properties": {
+        "type": {
+          "const": "bmc"
+        },
+        "areas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "label",
+              "items"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z_]+$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/item"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "kpi_effect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "unit",
+        "direction",
+        "change_low",
+        "change_high",
+        "basis"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z_]+\\.[a-z0-9_]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "direction": {
+          "enum": [
+            "up",
+            "down"
+          ]
+        },
+        "change_low": {
+          "type": "number"
+        },
+        "change_high": {
+          "type": "number"
+        },
+        "basis": {
+          "type": "string"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "title",
+        "read_on"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "pattern": "^https?://"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "read_on": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "type",
+        "description",
+        "areas",
+        "items",
+        "impact",
+        "likelihood",
+        "band",
+        "horizon",
+        "kpis",
+        "eur_year_low",
+        "eur_year_high",
+        "eur_year_expected",
+        "eur_basis",
+        "evidence",
+        "confidence"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^I\\d{1,2}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "pattern": "^[a-z_]+$"
+        },
+        "description": {
+          "type": "string"
+        },
+        "areas": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "impact": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "likelihood": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "band": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "horizon": {
+          "enum": [
+            "now",
+            "1_to_3_years",
+            "over_3_years"
+          ]
+        },
+        "kpis": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/kpi_effect"
+          }
+        },
+        "eur_year_low": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "eur_year_high": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "eur_year_expected": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "eur_basis": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/source"
+          }
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        }
+      }
+    },
+    "range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eur_year_low",
+        "eur_year_high",
+        "likelihood",
+        "eur_year_expected"
+      ],
+      "properties": {
+        "impact": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "likelihood": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "band": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "eur_year_low": {
+          "type": "number",
+          "minimum": 0
+        },
+        "eur_year_high": {
+          "type": "number",
+          "minimum": 0
+        },
+        "eur_year_expected": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "change": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "area",
+            "action",
+            "text"
+          ],
+          "properties": {
+            "area": {
+              "type": "string",
+              "pattern": "^[a-z_]+$"
+            },
+            "action": {
+              "enum": [
+                "add",
+                "change",
+                "remove"
+              ]
+            },
+            "item": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action",
+            "item",
+            "from",
+            "to"
+          ],
+          "properties": {
+            "action": {
+              "const": "rate"
+            },
+            "item": {
+              "type": "string",
+              "minLength": 1
+            },
+            "from": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4
+            },
+            "to": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action",
+            "item",
+            "signal",
+            "trigger"
+          ],
+          "properties": {
+            "action": {
+              "const": "watch"
+            },
+            "item": {
+              "type": "string",
+              "minLength": 1
+            },
+            "signal": {
+              "type": "string",
+              "minLength": 1
+            },
+            "trigger": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "issue",
+        "kind",
+        "chosen",
+        "title",
+        "first_step",
+        "owner",
+        "changes",
+        "residual",
+        "upside",
+        "effort",
+        "time_to_impact"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^R\\d{1,2}$"
+        },
+        "issue": {
+          "type": "string",
+          "pattern": "^I\\d{1,2}$"
+        },
+        "kind": {
+          "enum": [
+            "mitigate",
+            "advantage",
+            "accept",
+            "monitor"
+          ]
+        },
+        "chosen": {
+          "type": "boolean"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "first_step": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/change"
+          }
+        },
+        "residual": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/range"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "upside": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/range"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "effort": {
+          "enum": [
+            "S",
+            "M",
+            "L"
+          ]
+        },
+        "time_to_impact": {
+          "type": "string"
+        }
+      }
+    }
+  }
+};
