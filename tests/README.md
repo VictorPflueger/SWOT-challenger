@@ -40,7 +40,7 @@ Without a ViciDesign checkout, the suites that need one say so and pass, unless 
 | `i18n` | The same keys and placeholders in both languages, every key used, no sentence typed into the code |
 | `policy` | The exact policy, nothing loaded from elsewhere, nothing inline, storage only where allowed; Vici's `policyProblems` and `storageProblems` agree |
 | `hygiene` | No client, contact or meeting named in any published file |
-| `docs` | The documents exist, name real paths and sections, and date the prices |
+| `docs` | The documents exist, name real paths and sections, and date the prices; the workflow files parse |
 | `parity` | The shared files equal the sibling tools' copies, where a sibling has them |
 | `vici` | Vici's guide, byline, writing, AI notice and record-id checks on the page as served and rendered, and Vici's guide render check |
 | `smoke` | In Chromium: a first visit in English, the switch without a reload, one guide per language, the theme from the first paint, nothing kept, as Vici's `storedKeyProblems` confirms |

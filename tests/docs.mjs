@@ -11,6 +11,7 @@
 //     document names, in backticks or as a relative link, exists. PLAN.md names the files of 1.0.0, so
 //     only its sections count, not its paths; a path that starts with "../" points outside the document's
 //     folder (a sibling checkout, or a folder seen from Vici's stylesheet) and is not checked.
+//   - every workflow file parses as GitHub reads it: no plain value holds ": ".
 // Each check first fails on a planted error. Prints DOCS CONTROLS OK and DOCS OK.
 // Usage: node tests/docs.mjs
 import fs from "node:fs";
@@ -52,9 +53,28 @@ const read = (f) => fs.readFileSync(path.join(APP_ROOT, f), "utf8");
 /** Headings of a document: "## 4. The engine" gives "4", "### 2.1 File tree" gives "2.1". */
 const sectionIds = (t) => new Set([...t.matchAll(/^#{2,3} (\d+(?:\.\d+)?)\.?\s/gm)].map((m) => m[1]));
 
+/**
+ * A workflow file GitHub cannot parse fails without running a job. The usual slip: a plain scalar that
+ * holds ": " (a job's name with a colon in it). Each such line must quote its value.
+ */
+function workflowProblems(files) {
+  const out = [];
+  for (const [f, t] of Object.entries(files)) {
+    t.split("\n").forEach((line, i) => {
+      const m = line.match(/^\s*(?:- )?[\w-]+: (.*)$/);
+      if (!m) return;
+      const value = m[1].trim();
+      if (/^["'|>[{&*!]/.test(value) || value.startsWith("${{")) return;
+      if (/: /.test(value.replace(/\$\{\{[^}]*\}\}/g, "")) && !/^\s*#/.test(line)) out.push(`${f}, line ${i + 1}: a plain value holds ": ", so GitHub cannot parse the file; quote it`);
+    });
+  }
+  return out;
+}
+
 /** Every problem of the documents (docs: path to text) and of the files that cite them (code: path to text). */
 function problemsOf(docs, code) {
   const out = [];
+  out.push(...workflowProblems(Object.fromEntries(Object.entries(code).filter(([f]) => f.startsWith(".github/workflows/")))));
   for (const [f, rule] of Object.entries(DOCS)) {
     const t = docs[f];
     if (t === undefined) { out.push(`${f} is missing`); continue; }
@@ -155,7 +175,8 @@ const controls = [
   plant("citation of a missing plan section", (d) => { d["TECH_NOTES.md"] += "\nPLAN.md, section 99, says so.\n"; }),
   plant("reference to a missing section of the notes", (d) => { d["TECH_NOTES.md"] += "\nAs said (section 12).\n"; }),
   plant("code comment citing a missing section", (d, c) => { c["js/config.js"] = `${c["js/config.js"]}\n// TECH_NOTES §12\n`; }),
-  plant("suite with no row", (d) => { d["tests/README.md"] = d["tests/README.md"].replace(/^\| `engine` \|.*\n/m, ""); })
+  plant("suite with no row", (d) => { d["tests/README.md"] = d["tests/README.md"].replace(/^\| `engine` \|.*\n/m, ""); }),
+  plant("workflow job name with a colon", (d, c) => { c[".github/workflows/tests.yml"] = c[".github/workflows/tests.yml"].replace(/name: Browser suites \(Playwright, Chromium,/, "name: Browser suites (Playwright, Chromium: with"); })
 ];
 
 const checks = [

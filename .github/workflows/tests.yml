@@ -60,7 +60,7 @@ jobs:
           HYGIENE_TERMS: ${{ secrets.HYGIENE_TERMS }}
 
   browser:
-    name: Browser suites (Playwright, Chromium: Vici's checks and guide render, the presenter, the layout, nothing round)
+    name: Browser suites (Playwright, Chromium, with Vici's checks, the guide render, the presenter, the layout and nothing round)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     needs: node
