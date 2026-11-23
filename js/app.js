@@ -243,6 +243,8 @@ export async function start() {
       P.at += dt;
       if (P.at >= total) {
         go(state.step + 1, { focus: false, keep: true });
+        // The Summary ends the story: Play stops as it arrives, not a frame later.
+        if (finished()) { fillPlay(0); P.on = false; render(); return; }
         P.raf = requestAnimationFrame(frame);
         return;
       }

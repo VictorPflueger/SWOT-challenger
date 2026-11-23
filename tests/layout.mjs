@@ -8,6 +8,8 @@
 //   - the bar under the story is in the window, and at Strategise every strategy card shows in full above
 //     it, also with six strategies in one cell and the longest titles the contract allows;
 //   - the header keeps its height when the decision moves the key figures.
+// Hyphenation is off (tests/fixtures/no-hyphens.css), as in a Chromium without hyphenation dictionaries,
+// so a layout that fits only because the browser hyphenates German fails here as it would in CI.
 // Every request to another host is blocked. Prints LAYOUT OK. Usage: node tests/layout.mjs
 import { APP_ROOT, launchBrowser, serveStatic, NETWORK_NOISE } from "./lib/harness.mjs";
 
@@ -91,6 +93,7 @@ try {
           for (let step = 0; step <= 5; step++) {
             await page.goto(`${server.base}?guide=0&lang=${lang}&scenario=${id}&step=${step}`);
             await page.waitForSelector('html[data-boot="ready"]', { timeout: 20000 });
+            await page.addStyleTag({ url: "/tests/fixtures/no-hyphens.css" });
             const m = await page.evaluate(measure);
             // Every table of numbers open too.
             await page.evaluate(() => { for (const d of document.querySelectorAll("details.numbers")) d.open = true; });
@@ -106,6 +109,7 @@ try {
         await page.route("**/data/scenarios/s2.js", (route) => route.fulfill({ status: 200, contentType: "text/javascript", body: SIX_SOURCE }));
         await page.goto(`${server.base}?guide=0&lang=${lang}&scenario=s2&step=4`);
         await page.waitForSelector('html[data-boot="ready"]', { timeout: 20000 });
+        await page.addStyleTag({ url: "/tests/fixtures/no-hyphens.css" });
         const cards = await page.$$eval(".tows-cell[data-type='ST'] .tows-card", (els) => els.length);
         const six6 = await page.evaluate(measure);
         for (const p of six6.problems) problems.push(`six in one cell: ${p}`);

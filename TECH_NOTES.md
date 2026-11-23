@@ -116,7 +116,7 @@ A run comes to 16,000 to 17,000 input and about 7,000 output tokens: $0.0050 to 
 
 ### 10.3 Where 0.2.0 differs from PLAN.md
 
-- The Vici patterns came first, as planned: the framework view with its item states and the risk matrix, merged into ViciDesign on 23 November 2026 (pull requests 26 and 27) and copied into `vici/` at commit `6580c06`.
+- The Vici patterns came first, as planned: the framework view with its item states and the risk matrix, merged into ViciDesign on 23 November 2026 (pull requests 26 and 27). `vici/` holds Vici's main at `2759b7a`, which also carries patterns the sibling tools added since: block states, the ring, the horizon strip and the drop zone.
 - There is no "Run it live" button yet. Start describes both modes, and the version note there says that live runs come with 0.3.0.
 - "Fictional company" labels the scenario picker in the step bar, so the label shows on every step, the decision included.
 - The legend names each state in one word: Entered, AI, Added, Challenged, Addressed.
