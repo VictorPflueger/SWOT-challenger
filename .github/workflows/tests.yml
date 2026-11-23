@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   node:
-    name: Node.js suites (colours, icon, vici files, engine, schemas, KPIs, languages, policy, hygiene, docs, parity)
+    name: Node.js suites (colours, icon, vici files, engine, schemas, KPIs, scenarios, fact audit, units, languages, policy, hygiene, docs, parity)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: VictorPflueger/ViciDesign
-          ref: eaebdca51b747f275feafd5e6d0dcaf5c7420713
+          ref: 024ca83b777cda44309b813ce48dc697c07ca864
           path: ViciDesign
       - uses: actions/setup-node@v4
         with:
@@ -55,12 +55,12 @@ jobs:
       # has one; without it the generic checks run (tests/hygiene.mjs).
       - name: Node.js suites
         working-directory: app
-        run: node tests/run-all.mjs --require-vici tokens page-icon vici-files engine schemas kpis i18n policy hygiene docs parity
+        run: node tests/run-all.mjs --require-vici tokens page-icon vici-files engine schemas kpis scenarios audit unit i18n policy hygiene docs parity
         env:
           HYGIENE_TERMS: ${{ secrets.HYGIENE_TERMS }}
 
   browser:
-    name: Browser suites (Playwright, Chromium, with Vici's checks and guide render)
+    name: Browser suites (Playwright, Chromium: Vici's checks and guide render, the presenter, the layout, nothing round)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     needs: node
@@ -71,7 +71,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: VictorPflueger/ViciDesign
-          ref: eaebdca51b747f275feafd5e6d0dcaf5c7420713
+          ref: 024ca83b777cda44309b813ce48dc697c07ca864
           path: ViciDesign
       - uses: actions/setup-node@v4
         with:
@@ -84,7 +84,7 @@ jobs:
       - run: npm install -g playwright@1.56.0 && npx playwright install --with-deps chromium
       - name: Browser suites
         working-directory: app
-        run: NODE_PATH="$(npm root -g)" node tests/run-all.mjs --require-vici vici smoke hexagon
+        run: NODE_PATH="$(npm root -g)" node tests/run-all.mjs --require-vici vici smoke presenter layout hexagon
         env:
           SWOT_TEST_OUT: ${{ runner.temp }}/swot-challenger-tests
       - if: always()

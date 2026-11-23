@@ -1,11 +1,12 @@
 # Vici, copied into this prototype
 
 These files come unchanged from Vici, Victor Pflüger's design system
-(<https://victorpflueger.github.io/ViciDesign/index.html>): version **v1.0.0** as it stands on main at commit **`eaebdca`**
+(<https://victorpflueger.github.io/ViciDesign/index.html>): version **v1.0.0** as it stands on main at commit **`024ca83`**
 (23 November 2026). That main already carries much of Vici 2.0: the How it works guide (`vc-guide`), the
 2.0 byline, the key-figure rules (answer first, `vc-stat__was`), Presenting step by step with Play, Your turn,
 `vc-attention`, the AI notice, short forms with their tooltip, the theme script for a strict security policy
-(`vici-theme.js`), the rule that nothing is kept, and the prototype brief this prototype follows.
+(`vici-theme.js`), the rule that nothing is kept, the framework view with its item and block states, the risk matrix, the ring and the
+horizon strip, and the prototype brief this prototype follows.
 The version number stays 1.0.0 until 2.0 is released. The prototype loads these files from here rather than
 from a CDN, so every page is served from this site alone.
 

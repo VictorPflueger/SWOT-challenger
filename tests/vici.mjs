@@ -62,13 +62,13 @@ check(!b.length, `the byline follows Vici's standard${b.length ? `: ${b.join("; 
 check((html.match(/class="vc-byline"/g) || []).length === 1 && /<div class="intro">[\s\S]*?class="vc-byline"/.test(html), "the page carries one byline, in the strip under the header");
 const w = writingProblems(html);
 check(!w.length, `index.html keeps Vici's writing rules${w.length ? `: ${w.join("; ")}` : ""}`);
-const a = aiNoticeProblems(html);
-check(canRunLive(html) && !a.length, `the page can reach the Claude API and says "${AI_NOTICE.en}"${a.length ? `: ${a.join("; ")}` : ""}`);
-check(/class="vc-tag vc-tag--feature ai-notice"[\s\S]{0,200}You are interacting with an AI system/.test(html) && /data-mode="live"[\s\S]{0,400}ai-notice/.test(html), "the AI notice stands in a lilac tag beside the live mode");
+// The page can reach the Claude API, so it must say it is an AI system: the Start panel says so beside
+// the live mode, which js/panels.js draws; the rendered checks below read it there.
+check(canRunLive(html), "the page can reach the Claude API, so the rendered page must carry the AI notice");
 check(DE["p.ai"] === AI_NOTICE.de && EN["p.ai"] === AI_NOTICE.en, `the notice uses Vici's fixed words in both languages ("${AI_NOTICE.de}")`);
 const header = (html.match(/<header class="app-header"[\s\S]*?<\/header>/) || [""])[0];
 check(/>SIMULATION</.test(header), "the header says SIMULATION, in capitals");
-check(/<p class="intro-text"[^>]*>[^<]{40,260}<\/p>/.test(html) && /fictional companies/.test(EN["p.strip"]) && /erfundene Unternehmen/.test(DE["p.strip"]), "one sentence under the header says what the tool does and that its companies are fictional");
+check(/<p class="intro-text"[^>]*>[^<]{40,260}<\/p>/.test(html) && /fictional companies/.test(EN["p.strip"]) && /erfundene (Unternehmen|Firmen)/.test(DE["p.strip"]), "one sentence under the header says what the tool does and that its companies are fictional");
 check(/class="vc-cell vc-cell--lilac"[^>]*><span class="vc-icon vc-icon--scale">/.test(header), "the header shows the scale icon in a lilac hexagon");
 
 // ---- the page as rendered, in English and in German ---------------------------------------------------
@@ -82,10 +82,48 @@ try {
     const errors = [];
     p.on("pageerror", (e) => errors.push(String(e.message || e)));
     p.on("console", (m) => { if (m.type() === "error" && !NETWORK_NOISE.test(m.text())) errors.push(m.text()); });
+    // Every step of every scenario keeps the writing rules and shows names, not record ids, with every
+    // item and every strategy's details open, so the words the agents wrote are on screen too.
+    const L = lang === "en" ? "English" : "German";
+    const stepProblems = [];
+    let views = 0;
+    for (const scenario of ["s1", "s2", "s3"]) {
+      for (let step = 0; step <= 5; step++) {
+        await p.goto(`${server.base}?guide=0&lang=${lang}&scenario=${scenario}&step=${step}`);
+        await p.waitForSelector('html[data-boot="ready"]', { timeout: 20000 });
+        await p.evaluate(() => { for (const d of document.querySelectorAll("details")) d.open = true; for (const b of document.querySelectorAll(".tows-card__info[aria-expanded='false']")) b.click(); });
+        const shown = await p.content();
+        const body = shown.replace(/<dialog\b[\s\S]*?<\/dialog>/g, "").replace(/<script[\s\S]*?<\/script>/g, "");
+        for (const x of writingProblems(body)) stepProblems.push(`${scenario} step ${step}: ${x}`);
+        for (const x of recordIdProblems(body, [...IDS])) stepProblems.push(`${scenario} step ${step}: ${x}`);
+        views += 1;
+      }
+    }
+    check(views === 18 && !stepProblems.length, `rendered in ${L}: all ${views} steps of the three scenarios keep the writing rules and show names, not record ids${stepProblems.length ? `: ${stepProblems.slice(0, 8).join("; ")}` : ""}`);
+    // The talk track's figures (data-fig) are the tiles' figures for Arvento Drives: before the decision
+    // at Start, after the agents' recorded choice in the Summary.
+    const figs = async (step) => {
+      await p.goto(`${server.base}?guide=0&lang=${lang}&scenario=s2&step=${step}`);
+      await p.waitForSelector('html[data-boot="ready"]', { timeout: 20000 });
+      return p.evaluate((l) => {
+        const g = document.getElementById(`guide-${l}`);
+        const fig = Object.fromEntries([...g.querySelectorAll("[data-fig]")].map((s) => [s.dataset.fig, s.textContent.replace(/\s+/g, " ").trim()]));
+        // Both sides with white space normalised: the tiles keep no-break spaces ("<\u00a0€0.01").
+        const norm = (el) => (el?.textContent || "").replace(/\s+/g, " ").trim();
+        const tile = (id) => ({ main: norm(document.querySelector(`#kpi-${id} .kpi-main`)), unit: norm(document.querySelector(`#kpi-${id} .vc-stat__unit`)) });
+        return { fig, stake: tile("stake"), items: tile("items"), efe: tile("efe"), cost: tile("cost") };
+      }, lang);
+    };
+    const before = await figs(0);
+    const after = await figs(5);
+    const f = before.fig;
+    const figOk = f.stake === `${before.stake.main} ${before.stake.unit}`.trim() && f.challenged === before.items.main && f["efe.before"] === before.efe.main && f.cost === before.cost.main && f["efe.after"] === after.efe.main && f.left === after.stake.main;
+    check(figOk, `rendered in ${L}: the talk track's figures are the tiles'${figOk ? "" : ` (guide ${JSON.stringify(f)}; tiles before ${JSON.stringify([before.stake, before.items.main, before.efe.main, before.cost.main])}, after ${JSON.stringify([after.stake.main, after.efe.main])})`}`);
     await p.goto(`${server.base}?guide=0&lang=${lang}`);
     await p.waitForSelector('html[data-boot="ready"]', { timeout: 20000 });
     await p.waitForTimeout(400);
     const view = await p.content();
+    check(/data-mode="live"[\s\S]{0,600}class="vc-tag vc-tag--feature ai-notice"[\s\S]{0,300}(You are interacting with an AI system|Sie interagieren mit einem KI-System)/.test(view), `rendered in ${L}: the AI notice stands in a lilac tag beside the live mode`);
     // The page in one language shows one guide: the other is out of its way (lang.js takes its
     // data-vc-guide-auto and its button), so Vici's guide check sees a one-language page.
     const other = lang === "en" ? "de" : "en";

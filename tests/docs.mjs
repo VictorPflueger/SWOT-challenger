@@ -1,7 +1,7 @@
 // The documents of this version are complete and agree with the code:
 //   - README.md has at most 600 words, its sections, the version js/config.js names, the live address,
 //     the public-information sentence, the byline's two links and as many KPIs as data/kpis.js holds;
-//   - TECH_NOTES.md has its sections 1 to 9; section 1 dates the prices it lists ("Read on <date>", not
+//   - TECH_NOTES.md has its sections 1 to 10, and DATA_SOURCES.md its sections 1 to 5; section 1 dates the prices it lists ("Read on <date>", not
 //     after today) and lists the three models at the prices of the project instructions, read on
 //     23 November 2026; section 6 names as many KPIs and sectors as data/kpis.js holds;
 //   - tests/README.md has its sections and a row for every suite tests/run-all.mjs runs, and no other;
@@ -32,7 +32,8 @@ const PRICES = {
 };
 const DOCS = {
   "README.md": { max: 600, sections: ["What version", "What is real and what is simulated", "Run it", "Tests", "Author"] },
-  "TECH_NOTES.md": { numbered: 9 },
+  "TECH_NOTES.md": { numbered: 10 },
+  "DATA_SOURCES.md": { numbered: 5 },
   "tests/README.md": { sections: ["Setup", "Run", "What each suite proves", "The private term list"] },
   "vici/README.md": {},
   "PLAN.md": { plan: true }

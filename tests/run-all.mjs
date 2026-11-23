@@ -13,6 +13,9 @@ const SUITES = [
   { id: "engine", what: "golden cases SW0 to SW3 and the handoff example: risk, factor scores, IE matrix, money, fact keys", file: "tests/engine.mjs", browser: false },
   { id: "schemas", what: "data contracts, the wire form of every request schema, the shared handoff schema", file: "tests/schemas.mjs", browser: false },
   { id: "kpis", what: "the sector KPI library: thirteen sectors, every KPI in both languages, no benchmark value", file: "tests/kpis.mjs", browser: false, vici: true },
+  { id: "scenarios", what: "the three scenarios and their checker: both languages, four choices each, every defect the brief lists caught", file: "tests/scenarios.mjs", browser: false },
+  { id: "audit", what: "the fact audit on golden texts in both languages, and every summary's placeholders rendered", file: "tests/audit.mjs", browser: false },
+  { id: "unit", what: "the session-cost estimate, its display, the Method dialog's worked example, what each step shows", file: "tests/unit.mjs", browser: false },
   { id: "i18n", what: "both languages: keys, placeholders, defaults, no sentence typed into the code", file: "tests/i18n.mjs", browser: false },
   { id: "policy", what: "security policy, nothing loaded from elsewhere, no inline script or style, what the browser keeps", file: "tests/policy.mjs", browser: false, vici: true },
   { id: "hygiene", what: "no client, contact or meeting named in any published file", file: "tests/hygiene.mjs", browser: false },
@@ -20,6 +23,8 @@ const SUITES = [
   { id: "parity", what: "the shared files equal the sibling tools' copies, where a sibling has them", file: "tests/parity.mjs", browser: false },
   { id: "vici", what: "Vici's own checks on the page as served and rendered in both languages, the guide render, vici/ at its commit", file: "tests/vici.mjs", browser: true, vici: true },
   { id: "smoke", what: "the page in Chromium: first visit in English, the switch without a reload, one guide per language, what the browser keeps", file: "tests/smoke.mjs", browser: true, vici: true },
+  { id: "presenter", what: "the presenter in Chromium: every scenario from Start to Summary in both languages, Play, the address, the tiles, the grid, the Method dialog", file: "tests/presenter.mjs", browser: true, vici: true },
+  { id: "layout", what: "the layout at 1920 × 1080 and 1280 × 720, both themes and languages, every step: nothing cut, nothing hidden, nothing scrolls sideways", file: "tests/layout.mjs", browser: true },
   { id: "hexagon", what: "nothing round: the app's files, and the rendered page in both themes", file: "tests/hexagon.mjs", browser: true }
 ];
 

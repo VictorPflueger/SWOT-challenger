@@ -113,9 +113,15 @@ const jsOut = [...js, ...data, "vici/dist/vici.js"].flatMap((f) => jsLoads(read(
 check(!jsOut.length, `no script imports or opens anything from another site${jsOut.length ? `: ${jsOut.join(", ")}` : ""}`);
 // Hosts named in code that nothing connects to: links a person opens, and the JSON Schema dialect named in
 // the handoff schema's $schema, an identifier that no code fetches.
-const LINK_HOSTS = new Set(["platform.claude.com", "support.claude.com", "www.linkedin.com", "victorpflueger.github.io", "github.com", "www.w3.org", "json-schema.org"]);
+// doi.org resolves the Method dialog's citation of Weihrich's paper. A scenario's sources are links too:
+// every address a scenario names is a source DATA_SOURCES.md lists with the date it was read.
+const LINK_HOSTS = new Set(["platform.claude.com", "support.claude.com", "www.linkedin.com", "victorpflueger.github.io", "github.com", "www.w3.org", "json-schema.org", "doi.org"]);
+const scenarios = data.filter((f) => f.startsWith("data/scenarios/"));
+const listed = read("DATA_SOURCES.md");
+const unlisted = scenarios.flatMap((f) => [...stripComments(read(f)).matchAll(/https:\/\/[^\s"'`)]+/g)].map((m) => m[0]).filter((u) => !listed.includes(u)).map((u) => `${u} (${f})`));
+check(scenarios.length > 0 && !unlisted.length, `every address a scenario names is a source DATA_SOURCES.md lists${unlisted.length ? `; not listed: ${unlisted.join(", ")}` : ""}`);
 const hosts = new Map();
-for (const f of [...js, ...data]) for (const h of hostsIn(read(f))) if (!hosts.has(h)) hosts.set(h, f);
+for (const f of [...js, ...data].filter((x) => !scenarios.includes(x))) for (const h of hostsIn(read(f))) if (!hosts.has(h)) hosts.set(h, f);
 const unknown = [...hosts].filter(([h]) => h !== "api.anthropic.com" && !LINK_HOSTS.has(h));
 check(!unknown.length, `code names api.anthropic.com and links only${unknown.length ? `; also ${unknown.map(([h, f]) => `${h} (${f})`).join(", ")}` : ""}`);
 const FETCHERS = new Set(["js/anthropic.js"]);

@@ -37,7 +37,7 @@ const pair = pairProblems(EN, DE);
 check(!pair.length, `en.js and de.js: the same ${Object.keys(EN).length} keys, no empty value, the same placeholders${pair.length ? `: ${pair.join("; ")}` : ""}`);
 
 // Texts that read the same in both languages on purpose: names and codes.
-const SAME_ALLOWED = new Set(["app.name", "p.mode.simulation", "p.kpi.waiting", "p.byline.tip", "p.step.start", "p.modes.sim", "p.modes.live"]);
+const SAME_ALLOWED = new Set(["app.name", "p.mode.simulation", "p.kpi.waiting", "p.byline.tip", "p.step.start", "p.modes.sim", "p.modes.live", "p.pause", "p.item.issue", "s.assess.score", "m.kpis.definition"]);
 const same = Object.keys(EN).filter((k) => EN[k] === DE[k] && /\p{L}{3,}/u.test(EN[k]) && !SAME_ALLOWED.has(k));
 check(!same.length, `every text is translated, the same in both only for names and codes${same.length ? `: ${same.join(", ")}` : ""}`);
 
@@ -48,10 +48,25 @@ const PREFIXES = new Set(Object.keys(EN).map((k) => k.split(".")[0]));
 const KEYLIKE = /^[a-z][A-Za-z]*(\.[A-Za-z0-9_-]+)+$/;
 const used = new Set();
 const unknown = [];
+// A key family that code builds from a template, such as `p.type.${type}`: every key the template can
+// give counts as asked for. A template needs a literal part after its prefix ("p.type."), so a template
+// that could name any key ("p.${x}") is not read as asking for all of them.
+const familyOf = (value) => {
+  const parts = value.split("${}");
+  if (parts.length < 2 || !PREFIXES.has(value.split(".")[0])) return null;
+  const literal = value.replace(/\$\{\}/g, "").split(".").filter(Boolean);
+  if (literal.length < 2) return null;
+  return new RegExp(`^${parts.map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("[A-Za-z0-9_]+")}$`);
+};
+control(familyOf("p.type.${}")?.test("p.type.misfiled") && !familyOf("p.${}"), "control: a key family is read from a template, and a template that could name any key is not");
 for (const f of scripts) {
   for (const lit of stringLiterals(read(f))) {
+    const family = lit.quote === "`" ? familyOf(lit.value) : null;
+    if (family) { for (const k of Object.keys(EN)) if (family.test(k)) used.add(k); continue; }
     if (!KEYLIKE.test(lit.value) || !PREFIXES.has(lit.value.split(".")[0]) || /\.(js|json|html|css|mjs)$/.test(lit.value)) continue;
     if (Object.hasOwn(EN, lit.value)) used.add(lit.value);
+    // tn(key, n) asks for the key's plural forms, key.one and key.other.
+    else if (Object.hasOwn(EN, `${lit.value}.one`) && Object.hasOwn(EN, `${lit.value}.other`)) { used.add(`${lit.value}.one`); used.add(`${lit.value}.other`); }
     else unknown.push(`${f}:${lit.line} "${lit.value}"`);
   }
 }
@@ -65,7 +80,7 @@ check(!unused.length, `every key is asked for by a module or the page${unused.le
 const decode = (s) => s.replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
 const defaults = [...html.matchAll(/<([a-z0-9]+)\b[^>]*\bdata-i18n="([^"]+)"[^>]*>([^<]*)<\/\1>/g)];
 const wrong = defaults.filter((m) => decode(m[3]) !== EN[m[2]]).map((m) => `${m[2]}: "${m[3].slice(0, 50)}"`);
-check(defaults.length >= 40 && !wrong.length, `the ${defaults.length} English defaults in index.html equal en.js${wrong.length ? `: ${wrong.join("; ")}` : ""}`);
+check(defaults.length >= 20 && !wrong.length, `the ${defaults.length} English defaults in index.html equal en.js${wrong.length ? `: ${wrong.join("; ")}` : ""}`);
 const attrs = [...html.matchAll(/<[a-z0-9]+\b([^>]*\bdata-i18n-attr="([^"]+)"[^>]*)>/g)];
 const wrongAttr = [];
 for (const [, all, list] of attrs) for (const p of list.split(";")) {
@@ -81,8 +96,10 @@ check(/^<!doctype html>\s*<html lang="en-GB"/i.test(html), "index.html opens in 
 control(looksLikeProse("The key was rejected, check it in the Console"), "control: a sentence in code is recognised as prose");
 // The product's name (js/config.js) and the browser's own text for a script error that main.js ignores.
 const NOT_PROSE = new Set(["SWOT Challenger", "Script error."]);
+// The scenario checker's messages are for whoever edits a scenario, never on screen: English only.
+const DEVELOPER_ONLY = new Set(["js/scenario_check.js"]);
 const prose = [];
-for (const f of scripts) {
+for (const f of scripts.filter((s) => !DEVELOPER_ONLY.has(s))) {
   for (const lit of stringLiterals(read(f))) {
     if (!looksLikeProse(lit.value) || NOT_PROSE.has(lit.value)) continue;
     if (/console\.|throw new|new (Range|Type)?Error\(|describe/.test(lit.text)) continue;

@@ -62,6 +62,7 @@ const VALID = {
   Scenario: {
     id: "s2", source: "authored", as_of: "2026-11-23",
     company: { name: "Fictional Drives", sector: "industrial_manufacturing", country: "DE", description: { en: "A maker of drives", de: "Ein Hersteller von Antrieben" }, fictional: true },
+    sources: [{ url: "https://digital-strategy.ec.europa.eu/en/policies/data-act", read_on: "2026-11-23" }],
     entered: { strengths: [{ id: "s1", text: { en: "Quality", de: "Qualität" } }], weaknesses: [], opportunities: [], threats: [] },
     answers: { en: {}, de: {} }, recorded_choice: ["R1"]
   },

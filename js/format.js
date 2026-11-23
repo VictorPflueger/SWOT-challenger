@@ -5,7 +5,7 @@
 import { fixed, money } from "./risk.js";
 import { t, locale } from "./i18n/index.js";
 
-export { money };
+export { money, fixed };
 
 /** A factor score with two decimals: "2.50", "2,50". */
 export function score(x, lang) {
@@ -33,4 +33,29 @@ export function zoneName(zone, lang) {
 /** The note beside rescaled weights: "weights rescaled from 0.95". */
 export function rescaledNote(weightSum, lang) {
   return t("p.note.rescaled", { sum: fixed(weightSum, 2, lang) }, lang);
+}
+
+/** A weight with two decimals: "0.15", "0,15". */
+export function weight(x, lang) {
+  return fixed(x, 2, lang);
+}
+
+/**
+ * A session's cost in euros with cents: "≈ €0.05", "≈ 0,05 €"; below half a cent "< €0.01", "< 0,01 €",
+ * so an estimate never reads as free.
+ */
+export function sessionCost(eur, lang) {
+  const below = eur < 0.005;
+  const n = fixed(below ? 0.01 : eur, 2, lang);
+  const amount = lang === "de" ? `${n} €` : `€${n}`;
+  return `${below ? "<" : "≈"} ${amount}`;
+}
+
+/** A country's name from its two-letter code, in the page's language: "Germany", "Deutschland". */
+export function countryName(code, lang) {
+  try {
+    return new Intl.DisplayNames([locale(lang)], { type: "region" }).of(code) || code;
+  } catch {
+    return code;
+  }
 }
