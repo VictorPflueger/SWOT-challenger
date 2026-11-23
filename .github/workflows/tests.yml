@@ -1,0 +1,96 @@
+# Runs the test suites on every push and pull request. The app itself has no build step and no
+# dependencies; Playwright is installed here only for the browser suites (tests/README.md). ViciDesign is
+# checked out next to the app at the commit vici/ was copied from, so the suites run Vici's own checks
+# and compare vici/ with it byte for byte. Adapted from the Data Quality Agent 2.2.0.
+name: tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch or pull request cancels the run still in progress.
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    name: Node.js suites (colours, icon, vici files, engine, schemas, KPIs, languages, policy, hygiene, docs, parity)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: app
+      - uses: actions/checkout@v4
+        with:
+          repository: VictorPflueger/ViciDesign
+          ref: eaebdca51b747f275feafd5e6d0dcaf5c7420713
+          path: ViciDesign
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Victor's website next to the app, but only once it carries this tool's card: the page-icon
+      # suite then holds the card's name, icon and kind to the page. Without the card the clone is
+      # dropped again, and the suite checks the page's own icons.
+      - name: VIP's card for this tool, if it exists
+        run: |
+          git clone --depth 1 https://github.com/VictorPflueger/VIP VIP
+          if grep -q 'name: "SWOT Challenger"' VIP/data/prototypes.js; then
+            echo "VIP carries the card: page-icon compares the page with it."
+          else
+            rm -rf VIP
+            echo "VIP has no card for this tool yet: page-icon checks the page alone."
+          fi
+      # The sibling tools next to the app, so the parity suite compares the shared files with theirs.
+      - name: The sibling tools, for the shared files
+        run: |
+          for repo in BMC-challenger PESTEL-challenger PrototypeIdeator; do
+            git clone --depth 1 "https://github.com/VictorPflueger/$repo" "$repo" || echo "$repo could not be cloned: parity skips it."
+          done
+      # The hygiene check reads a private term list from the HYGIENE_TERMS secret if the repository
+      # has one; without it the generic checks run (tests/hygiene.mjs).
+      - name: Node.js suites
+        working-directory: app
+        run: node tests/run-all.mjs --require-vici tokens page-icon vici-files engine schemas kpis i18n policy hygiene docs parity
+        env:
+          HYGIENE_TERMS: ${{ secrets.HYGIENE_TERMS }}
+
+  browser:
+    name: Browser suites (Playwright, Chromium, with Vici's checks and guide render)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    needs: node
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: app
+      - uses: actions/checkout@v4
+        with:
+          repository: VictorPflueger/ViciDesign
+          ref: eaebdca51b747f275feafd5e6d0dcaf5c7420713
+          path: ViciDesign
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Cache the Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-1.56.0-chromium-${{ runner.os }}
+      - run: npm install -g playwright@1.56.0 && npx playwright install --with-deps chromium
+      - name: Browser suites
+        working-directory: app
+        run: NODE_PATH="$(npm root -g)" node tests/run-all.mjs --require-vici vici smoke hexagon
+        env:
+          SWOT_TEST_OUT: ${{ runner.temp }}/swot-challenger-tests
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-screenshots
+          path: ${{ runner.temp }}/swot-challenger-tests
+          if-no-files-found: ignore
+          retention-days: 14

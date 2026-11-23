@@ -1,0 +1,88 @@
+# Technical notes
+
+Version 0.1.0 (M1 Foundations), 23 November 2026. These notes record what was checked at source, with the date, and the decisions the code rests on. PLAN.md is the plan Victor approved on 23 November 2026, with the eleven cuts of its design review. Where the code says "brief 6.4", it means section 6.4 of Victor's build brief, which is not part of this repository.
+
+## 1. Models and prices
+
+Read on 23 November 2026 at https://platform.claude.com/docs/en/about-claude/pricing and https://platform.claude.com/docs/en/about-claude/models/overview. US dollars per million tokens.
+
+| Model | API id | Input | Output | Cache write (5 min) | Cache read |
+|---|---|---|---|---|---|
+| Haiku 5.5 | `claude-haiku-5-5` | $0.10 | $0.50 | $0.125 | $0.01 |
+| Sonnet 5.5 | `claude-sonnet-5-5` | $2 | $10 | $2.50 | $0.10 |
+| Opus 5.5 | `claude-opus-5-5` | $4 | $20 | $5 | $0.20 |
+
+Haiku 5.5 prompts over 100,000 tokens cost $0.50 input and $2.50 output, so no request may come near that size. Web search costs $10 per 1,000 searches plus its tokens. The three models share a context of one million tokens, 128,000 output tokens and a reliable knowledge cutoff of June 2026.
+
+Version 0.1.0 calls no model. The live run arrives in 0.3.0; its prices go into `js/config.js` then, read again on the day and dated here.
+
+## 2. The API from the browser
+
+Probed on 23 November 2026 with curl, and with Chrome 153 on a local page under the app's exact policy. PLAN.md, section 11, holds the full table with its sources.
+
+- The `anthropic-dangerous-direct-browser-access: true` header makes the API's answers readable in the page; without it Chrome blocks them. Preflight allows the four headers the client sends, from any origin.
+- Keyless requests with `anthropic-version: 2023-06-01` get a 401 for the missing key and nothing else.
+- `GET /v1/models` answers a keyless request with a 401 the page can read. With a key, it is the free key check.
+- Structured outputs go in `output_config.format` as `{ "type": "json_schema" }`, with no beta header. The API accepts types, `enum`, `const`, `anyOf`, `$ref`, `required`, `additionalProperties: false`, ten string formats and `minItems` of 0 or 1, and answers 400 to every other limit. `js/wire.js` strips those before sending (section 5).
+- Effort goes in `output_config.effort`. Haiku 5.5 takes `thinking: { "type": "disabled" }` up to high effort; Sonnet 5.5 refuses it. Sonnet 5.5 and Opus 5.5 also refuse forced tool use, so the Scout calls its tool with `tool_choice` auto.
+- Under the policy, the browser blocks a same-origin JSON module by `connect-src`, while JavaScript modules load. Hence `schemas/strategy-challenge-1.js` beside the JSON file.
+- A paid Claude plan does not include API use (support.claude.com, article 9876003). Max, Ultra and Team plans include monthly API credits.
+
+The probes that need a key are one console snippet in PLAN.md, section 11. Victor has not run it yet; its table goes here, with the date, when he has.
+
+## 3. The policy and what the browser keeps
+
+The policy is the brief's, in one meta element of `index.html` and as `CSP` in `js/config.js`. `tests/policy.mjs` holds the two equal and checks that nothing loads from another host and nothing is inline, and Vici's `policyProblems` agrees. The page's styles live in `css/app.css`. The theme comes from Vici's `vici/dist/vici-theme.js`, a plain script in the head that applies the remembered choice before the first paint; `data-vc-theme-default="light"` on the `<html>` element keeps the page light until the visitor chooses dark, because the room is usually lit.
+
+The browser keeps `vc-theme` (Vici's theme) and `swot.lang` (the language) in local storage, Vici's `vc-guide:` notes in session storage, and nothing else. Only `vici/dist/vici-theme.js`, `js/lang.js` and `js/i18n/index.js` touch storage, which `tests/policy.mjs` checks in the source with its own scan and with Vici's `storageProblems`. `tests/smoke.mjs` checks in Chromium that local storage, session storage, IndexedDB, the Cache API and cookies hold nothing more after a visit, and Vici's `storedKeyProblems` agrees.
+
+## 4. The engine
+
+`js/risk.js`, shared with the other challengers, and `js/engine.js` hold pure functions.
+
+| Part | Rule |
+|---|---|
+| Risk band | Impact × likelihood: low 1 to 4, medium 5 to 9, high 10 to 15, critical 16 to 25 |
+| Probability | Likelihood 1 to 5 counts as 0.1, 0.3, 0.5, 0.7 and 0.9 |
+| Expected euros | The midpoint of the range × the probability. At stake adds up the issues that can be priced and says how many it rests on. Left takes the lowest residual of the chosen responses per issue. Upside adds up the chosen advantages |
+| IFE and EFE | After Fred R. David: the sum of weight × rating on each side. Weights that miss 1 by more than 0.001 are rescaled, and the guards refuse a miss above 0.05 |
+| IE matrix | IFE across, EFE up, each strong or high from 3.00 and average or medium from 2.00. Cells I to IX run row by row: grow and build in I, II and IV; hold and maintain in III, V and VII; harvest or divest in VI, VIII and IX |
+| Rounding | First to 1e-9, from the exact decimal value of the double (`toFixed(9)`); then once for display, halves away from zero, on decimal digits (BigInt). So 2.525 shows as 2.53, and €1,399,999.9999999998 counts as €1.4m |
+| Money | From €999,500 in millions with one decimal ("€3.7m", "3,7 Mio. €"); from €999.50 in whole thousands ("€300k", "300 Tsd. €"); below that in whole euros. The unit follows the rounded value, so no screen shows €1000k. German puts no-break spaces between number, word and sign |
+
+`tests/engine.mjs` reproduces the golden cases SW0 to SW3 of `tests/fixtures/golden.json` within 1e-9, every display string in both languages, the IE boundaries and the handoff example of brief 4.3.
+
+## 5. Contracts and the wire
+
+`schemas/swot.js` holds the contracts of brief 10. Every field of an agent's answer is required and none has two types, so each request schema has 0 optional and 0 union-typed parameters, against the API's limits of 24 and 16. A value that may be absent is an array of zero or one element (a strategy's `residual` or `upside`), or a flag with a reason (`monetisable`). `js/wire.js` inlines references, closes every object and moves each limit it strips into the field's description. `tests/schemas.mjs` proves that no refused keyword survives.
+
+One strategy answers one issue, because the handoff file's response holds one `issue` and one residual. Where two chosen strategies answer one issue, the lower residual counts.
+
+The shared handoff schema `schemas/strategy-challenge-1.json` follows brief 4.3. `tools/schema-module.mjs` writes its module twin, and `tests/schemas.mjs` holds the two equal. The brief leaves some choices open; the sibling tools take these over unchanged:
+
+- `horizon` is `now`, `1_to_3_years` or `over_3_years`.
+- An issue that cannot be priced carries `null` in its three euro fields and its reason in `eur_basis`.
+- A response's `kind` is `mitigate`, `advantage`, `accept` or `monitor`. Its `changes` take one of three shapes: a canvas change (`area`, `action` add, change or remove, `text`), a SWOT rating (`action: "rate"`, `item`, `from`, `to`) or a PESTEL watch (`action: "watch"`, `item`, `signal`, `trigger`).
+- SWOT and PESTEL areas are checked against their ids. The canvas's nine block ids are the canvas tool's to fix, so for now they are checked only as lower-case words.
+
+The brief's own example validates against it, and so does a SWOT handoff.
+
+## 6. The KPI library
+
+`data/kpis.js` holds 115 KPIs in thirteen sectors: ten in `general`, exactly as brief 6.4 lists them, and the brief's starting points for the three scenario sectors. Units are symbols (€, %, €/TEU, min, d, h, #, ×), so they read the same in both languages. Every source is "common practice". A definition that follows a standard names it in words: EN ISO 14083, the Capital Requirements Regulation, Solvency II, the SAIDI index. No definition holds a benchmark value; `tests/kpis.mjs` refuses a money amount, and any share but the 100 % break-even of a ratio.
+
+## 7. Shared parts and the sibling tools
+
+On 23 November 2026 the three siblings held their Phase 0 plans and no code (BMC f7ec7a5, PESTEL a223844, Ideator 0aefaf6). This tool builds `js/risk.js`, `data/kpis.js` and the handoff schema in M1. The first tool to merge a shared file becomes its source, and the others copy it unchanged. `tests/parity.mjs` compares the files with any sibling checkout beside this repository, and CI clones the three for it.
+
+## 8. Tests
+
+`node tests/run-all.mjs` runs every suite; `tests/README.md` says what each proves and how to install Playwright. The private term list of the hygiene check is the `HYGIENE_TERMS` secret. It is not set yet, so CI runs the generic checks, and every push is first checked locally against a list kept outside the repository.
+
+## 9. Where this version differs from PLAN.md
+
+On 23 November 2026, while M1 was being built, the PESTEL Challenger added two patterns to Vici's main (commit `eaebdca`): the session-only data rule, with `storageProblems` and `storedKeyProblems`, and a blank starter that runs under the strict policy, with `vici-theme.js` and `policyProblems`. This tool takes them over rather than building its own.
+
+- PLAN.md's file tree lists a theme script of this tool's own in js/. Vici's `vici/dist/vici-theme.js` does the same job, so there is none.
+- PLAN.md has this tool add the session-only data rule to Vici in M3. Vici has it now; M3 adds only the live-run dialog.
+- Vici's page on building a prototype now asks that the browser warn before the page closes while a result has not been downloaded. That comes with the report in 0.4.0.

@@ -1,0 +1,259 @@
+{
+  "_about": "The golden cases of the brief's section 11, written before the engine. Exact values are fractions in strings (\"48/19\"); tests/lib/fixtures.mjs turns them into numbers, and tests/engine.mjs compares the engine within 1e-9. Display strings use a no-break space (U+00A0) between a number and its unit, as Vici's writing guideline asks.",
+  "SW0": {
+    "about": "Bands from impact times likelihood: low 1 to 4, medium 5 to 9, high 10 to 15, critical 16 to 25.",
+    "rows": [
+      {
+        "impact": 2,
+        "likelihood": 2,
+        "score": 4,
+        "band": "low"
+      },
+      {
+        "impact": 1,
+        "likelihood": 5,
+        "score": 5,
+        "band": "medium"
+      },
+      {
+        "impact": 3,
+        "likelihood": 3,
+        "score": 9,
+        "band": "medium"
+      },
+      {
+        "impact": 2,
+        "likelihood": 5,
+        "score": 10,
+        "band": "high"
+      },
+      {
+        "impact": 3,
+        "likelihood": 5,
+        "score": 15,
+        "band": "high"
+      },
+      {
+        "impact": 4,
+        "likelihood": 4,
+        "score": 16,
+        "band": "critical"
+      }
+    ]
+  },
+  "SW1": {
+    "about": "Factor scores before and after the strategies, and where the company stands on the IE matrix.",
+    "items": [
+      {
+        "id": "s1",
+        "quadrant": "strengths",
+        "weight": "0.20",
+        "rating": 4,
+        "after": 4
+      },
+      {
+        "id": "s2",
+        "quadrant": "strengths",
+        "weight": "0.15",
+        "rating": 3,
+        "after": 3
+      },
+      {
+        "id": "s3",
+        "quadrant": "strengths",
+        "weight": "0.15",
+        "rating": 3,
+        "after": 3
+      },
+      {
+        "id": "w1",
+        "quadrant": "weaknesses",
+        "weight": "0.20",
+        "rating": 1,
+        "after": 2
+      },
+      {
+        "id": "w2",
+        "quadrant": "weaknesses",
+        "weight": "0.20",
+        "rating": 2,
+        "after": 2
+      },
+      {
+        "id": "w3",
+        "quadrant": "weaknesses",
+        "weight": "0.10",
+        "rating": 2,
+        "after": 2
+      },
+      {
+        "id": "o1",
+        "quadrant": "opportunities",
+        "weight": "0.25",
+        "rating": 2,
+        "after": 3
+      },
+      {
+        "id": "o2",
+        "quadrant": "opportunities",
+        "weight": "0.10",
+        "rating": 3,
+        "after": 3
+      },
+      {
+        "id": "t1",
+        "quadrant": "threats",
+        "weight": "0.30",
+        "rating": 2,
+        "after": 3
+      },
+      {
+        "id": "t2",
+        "quadrant": "threats",
+        "weight": "0.20",
+        "rating": 1,
+        "after": 3
+      },
+      {
+        "id": "t3",
+        "quadrant": "threats",
+        "weight": "0.15",
+        "rating": 2,
+        "after": 2
+      }
+    ],
+    "before": {
+      "ife": "5/2",
+      "efe": "19/10",
+      "cell": "VIII",
+      "zone": "harvest"
+    },
+    "after": {
+      "ife": "27/10",
+      "efe": "57/20",
+      "cell": "V",
+      "zone": "hold"
+    },
+    "display": {
+      "en": {
+        "ife.before": "2.50",
+        "efe.before": "1.90",
+        "ife.after": "2.70",
+        "efe.after": "2.85",
+        "zone.before": "Harvest or divest",
+        "zone.after": "Hold and maintain"
+      },
+      "de": {
+        "ife.before": "2,50",
+        "efe.before": "1,90",
+        "ife.after": "2,70",
+        "efe.after": "2,85",
+        "zone.before": "Abschöpfen oder trennen",
+        "zone.after": "Halten und pflegen"
+      }
+    }
+  },
+  "SW2": {
+    "about": "SW1 before the strategies with w3's weight at 0.05: the internal weights add up to 0.95 and are rescaled; then the IE matrix's boundaries.",
+    "w3_weight": "0.05",
+    "weight_sum": "19/20",
+    "raw_ife": "12/5",
+    "ife": "48/19",
+    "display": {
+      "en": "2.53",
+      "de": "2,53"
+    },
+    "note": {
+      "en": "weights rescaled from 0.95",
+      "de": "Gewichte von 0,95 auf 1 umgerechnet"
+    },
+    "boundaries": [
+      {
+        "ife": "3",
+        "efe": "3",
+        "cell": "I",
+        "zone": "grow"
+      },
+      {
+        "ife": "2",
+        "efe": "199/100",
+        "cell": "VIII",
+        "zone": "harvest"
+      },
+      {
+        "ife": "199/100",
+        "efe": "2",
+        "cell": "VI",
+        "zone": "harvest"
+      }
+    ]
+  },
+  "SW3": {
+    "about": "Expected euros a year: the range's midpoint times the probability of the likelihood; at stake is their sum.",
+    "issues": [
+      {
+        "id": "J1",
+        "impact": 3,
+        "likelihood": 4,
+        "eur_year_low": 1000000,
+        "eur_year_high": 3000000,
+        "band": "high",
+        "expected": "1400000",
+        "display": {
+          "en": "€1.4m",
+          "de": "1,4 Mio. €"
+        }
+      },
+      {
+        "id": "J2",
+        "impact": 4,
+        "likelihood": 2,
+        "eur_year_low": 500000,
+        "eur_year_high": 1500000,
+        "band": "medium",
+        "expected": "300000",
+        "display": {
+          "en": "€300k",
+          "de": "300 Tsd. €"
+        }
+      },
+      {
+        "id": "J3",
+        "impact": 5,
+        "likelihood": 3,
+        "eur_year_low": 2000000,
+        "eur_year_high": 6000000,
+        "band": "high",
+        "expected": "2000000",
+        "display": {
+          "en": "€2.0m",
+          "de": "2,0 Mio. €"
+        }
+      }
+    ],
+    "at_stake": "3700000",
+    "at_stake_display": {
+      "en": "€3.7m",
+      "de": "3,7 Mio. €"
+    }
+  },
+  "handoff_example": {
+    "about": "The handoff example of brief 4.3: issue I1 and its chosen response R1.",
+    "issue": {
+      "impact": 4,
+      "likelihood": 4,
+      "eur_year_low": 2000000,
+      "eur_year_high": 6000000,
+      "band": "critical",
+      "expected": "2800000"
+    },
+    "residual": {
+      "impact": 3,
+      "likelihood": 2,
+      "eur_year_low": 1000000,
+      "eur_year_high": 3000000,
+      "band": "medium",
+      "expected": "600000"
+    }
+  }
+}

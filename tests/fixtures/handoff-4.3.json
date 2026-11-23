@@ -1,0 +1,144 @@
+{
+  "schema": "strategy-challenge/1",
+  "tool": {
+    "id": "bmc-challenger",
+    "name": "Business Model Canvas Challenger",
+    "version": "1.0.0",
+    "url": "https://victorpflueger.github.io/BMC-challenger/"
+  },
+  "created": "2026-12-01T09:30:00Z",
+  "language": "en",
+  "mode": "simulation",
+  "model": null,
+  "company": {
+    "name": "Tidewell Lines",
+    "sector": "transport_logistics",
+    "country": "DE",
+    "description": "Container carrier based in Bremen",
+    "fictional": true
+  },
+  "framework": {
+    "type": "bmc",
+    "areas": [
+      {
+        "id": "value",
+        "label": "Value propositions",
+        "items": [
+          {
+            "id": "value-1",
+            "text": "Weekly Europe–Asia loops with fixed call days",
+            "source": "user"
+          },
+          {
+            "id": "value-2",
+            "text": "Emissions statement per container",
+            "source": "ai",
+            "confidence": "medium",
+            "basis": "Shippers report transport emissions to their customers"
+          }
+        ]
+      }
+    ]
+  },
+  "issues": [
+    {
+      "id": "I1",
+      "title": "Emission allowances raise the cost of every European call",
+      "type": "regulation",
+      "description": "Voyages to and from EU ports need emission allowances, and the surcharge covers only part of them.",
+      "areas": [
+        "costs",
+        "revenue"
+      ],
+      "items": [
+        "costs-2",
+        "revenue-1"
+      ],
+      "impact": 4,
+      "likelihood": 4,
+      "band": "critical",
+      "horizon": "now",
+      "kpis": [
+        {
+          "id": "transport_logistics.cost_per_teu",
+          "name": "Cost per container moved",
+          "unit": "EUR per TEU",
+          "direction": "up",
+          "change_low": 12,
+          "change_high": 25,
+          "basis": "Allowance price times emissions per container"
+        }
+      ],
+      "eur_year_low": 2000000,
+      "eur_year_high": 6000000,
+      "eur_year_expected": 2800000,
+      "eur_basis": "Containers on Europe services times the uncovered cost per container",
+      "evidence": [
+        {
+          "url": "https://example.org/source",
+          "title": "Title of the source",
+          "read_on": "2026-11-23"
+        }
+      ],
+      "confidence": "medium"
+    }
+  ],
+  "responses": [
+    {
+      "id": "R1",
+      "issue": "I1",
+      "kind": "mitigate",
+      "chosen": true,
+      "title": "Charge the full allowance cost through a published surcharge",
+      "first_step": "Pricing sets the surcharge formula for the next quarter",
+      "owner": "Commercial",
+      "changes": [
+        {
+          "area": "revenue",
+          "action": "add",
+          "text": "Emissions surcharge per container, published monthly"
+        }
+      ],
+      "residual": {
+        "impact": 3,
+        "likelihood": 2,
+        "band": "medium",
+        "eur_year_low": 1000000,
+        "eur_year_high": 3000000,
+        "eur_year_expected": 600000
+      },
+      "upside": null,
+      "effort": "M",
+      "time_to_impact": "3-6 months"
+    }
+  ],
+  "figures": {
+    "at_stake_eur_year": 9450000,
+    "left_eur_year": 5210000,
+    "upside_eur_year": 1400000,
+    "score": {
+      "name": "resilience",
+      "scale": "0-100",
+      "before": 71,
+      "after": 84
+    },
+    "pressure": {
+      "label": "Blocks under pressure",
+      "before": 6,
+      "after": 3,
+      "of": 9
+    }
+  },
+  "summary": {
+    "headline": "Emission costs and longer routes put €9.5m a year at risk",
+    "text": "The rendered management summary, figures filled in."
+  },
+  "sources": [
+    {
+      "url": "https://example.org/source",
+      "title": "Title of the source",
+      "read_on": "2026-11-23"
+    }
+  ],
+  "disclaimer": "AI-generated analysis for discussion. Figures are estimates. Built from information the user confirmed to be public."
+}

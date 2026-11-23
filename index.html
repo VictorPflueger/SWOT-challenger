@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en-GB" data-lang="en" data-vc-theme-default="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SWOT Challenger: strengths, weaknesses, opportunities and threats, put to the test</title>
+  <!-- The page talks to no host but the Claude API (brief 5.1). js/config.js holds the same policy. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src https://api.anthropic.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="SWOT Challenger: AI agents complete a SWOT analysis, challenge every item, put a figure on what it misses and turn it into strategies. A prototype by Victor Pflüger.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="vici/dist/vici.min.css">
+  <link rel="stylesheet" href="css/app.css">
+  <script src="vici/dist/vici-theme.js"></script>
+  <script src="vici/dist/vici.js" defer></script>
+  <script type="module" src="js/main.js"></script>
+</head>
+<body class="app-shell">
+  <!-- The texts below are the English defaults: an element that names its key in data-i18n (or
+       data-i18n-attr for attributes) gets its words from js/i18n/, in English or German. -->
+  <a class="vc-skip-link" href="#swot" data-i18n="p.skip">Skip to the SWOT</a>
+
+  <header class="app-header">
+    <div class="brand">
+      <span class="vc-cell vc-cell--lilac" aria-hidden="true"><span class="vc-icon vc-icon--scale"></span></span>
+      <span data-i18n="app.name" class="brand-name">SWOT Challenger</span>
+    </div>
+
+    <div class="header-actions">
+      <span class="vc-tooltip-anchor">
+        <span class="vc-tag vc-tag--lg mode-tag" id="mode-tag" data-mode="simulation" tabindex="0" aria-describedby="tip-mode"><span data-i18n="p.mode.simulation">SIMULATION</span></span>
+        <span class="vc-tooltip vc-tooltip--bottom" role="tooltip" id="tip-mode" data-i18n="p.mode.tip">This version plays no run yet. The simulation of three fictional companies comes with version 0.2.0.</span>
+      </span>
+      <!-- One guide per language, each with its own button; js/lang.js shows the page's. -->
+      <button type="button" class="vc-button vc-button--secondary guide-open" data-vc-guide-open="guide-en" lang="en"><span class="vc-icon vc-icon--info" aria-hidden="true"></span>How it works</button>
+      <button type="button" class="vc-button vc-button--secondary guide-open" data-vc-guide-open="guide-de" lang="de" hidden><span class="vc-icon vc-icon--info" aria-hidden="true"></span>So funktioniert's</button>
+      <div class="vc-button-group lang-switch" role="group" aria-label="Language" data-i18n-attr="aria-label:p.lang">
+        <button type="button" class="vc-button vc-button--secondary lang-option" data-lang="en" lang="en" title="English" aria-pressed="true">EN</button>
+        <button type="button" class="vc-button vc-button--secondary lang-option" data-lang="de" lang="de" title="Deutsch" aria-pressed="false">DE</button>
+      </div>
+      <span class="vc-tooltip-anchor">
+        <button type="button" class="vc-icon-button" data-vc-theme-toggle aria-labelledby="tip-theme"><span class="vc-icon vc-icon--moon vc-when-light" aria-hidden="true"></span><span class="vc-icon vc-icon--sun vc-when-dark" aria-hidden="true"></span></button>
+        <span class="vc-tooltip vc-tooltip--bottom" role="tooltip" id="tip-theme" data-i18n="p.theme">Dark or light theme</span>
+      </span>
+    </div>
+
+    <!-- The four key figures. data-vc-kpi names each in English, data-vc-kpi-de in German; each guide
+         explains them in a row of its How it works chapter. Before anything runs they say what they
+         wait for; from version 0.2.0 a scenario's figures answer first. -->
+    <div class="kpis" role="group" aria-label="Key figures" data-i18n-attr="aria-label:p.kpis">
+      <div class="kpi vc-stat" id="kpi-stake" data-vc-kpi="At stake a year" data-vc-kpi-de="Jährlich auf dem Spiel">
+        <p class="vc-stat__label" data-i18n="p.kpi.stake.label">At stake a year</p>
+        <p class="vc-stat__value kpi-value" data-state="waiting"><span class="kpi-main" data-i18n="p.kpi.waiting" aria-hidden="true">…</span></p>
+        <p class="vc-stat__note kpi-note" data-i18n="p.kpi.stake.note">waits for a scenario</p>
+      </div>
+      <div class="kpi vc-stat" id="kpi-items" data-vc-kpi="Items challenged" data-vc-kpi-de="Beanstandete Punkte">
+        <p class="vc-stat__label" data-i18n="p.kpi.items.label">Items challenged</p>
+        <p class="vc-stat__value kpi-value" data-state="waiting"><span class="kpi-main" data-i18n="p.kpi.waiting" aria-hidden="true">…</span></p>
+        <p class="vc-stat__note kpi-note" data-i18n="p.kpi.items.note">waits for the challenge</p>
+      </div>
+      <div class="kpi vc-stat vc-tooltip-anchor" id="kpi-efe" data-vc-kpi="Response to the market" data-vc-kpi-de="Antwort auf den Markt" tabindex="0" aria-describedby="tip-efe">
+        <p class="vc-stat__label" data-i18n="p.kpi.efe.label">Response to the market</p>
+        <p class="vc-stat__value kpi-value" data-state="waiting"><span class="kpi-main" data-i18n="p.kpi.waiting" aria-hidden="true">…</span></p>
+        <p class="vc-stat__note kpi-note" data-i18n="p.kpi.efe.note">1 to 4, where 2.50 is average</p>
+        <span class="vc-tooltip vc-tooltip--bottom" role="tooltip" id="tip-efe" data-i18n="p.kpi.efe.tip">The EFE score of Fred R. David's external factor evaluation</span>
+      </div>
+      <div class="kpi vc-stat" id="kpi-cost" data-vc-kpi="Session cost" data-vc-kpi-de="Sitzungskosten">
+        <p class="vc-stat__label" data-i18n="p.kpi.cost.label">Session cost</p>
+        <p class="vc-stat__value kpi-value" data-state="waiting"><span class="kpi-main" data-i18n="p.kpi.waiting" aria-hidden="true">…</span></p>
+        <p class="vc-stat__note kpi-note" data-i18n="p.kpi.cost.note">waits for a run</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- What the tool does and how real its data is, in one sentence, with the byline beside it. -->
+  <div class="intro">
+    <p class="intro-text" data-i18n="p.strip">AI agents complete a SWOT analysis, challenge every item, put a figure on what it misses and turn it into strategies. The simulation uses fictional companies; a live run uses your company and your Claude key.</p>
+    <p class="vc-byline">
+      <span class="vc-byline__label" data-i18n="p.byline.label">Built by</span>
+      <a class="vc-byline__person" href="https://www.linkedin.com/in/victorpflueger" rel="author noopener" target="_blank">
+        <span class="vc-avatar vc-avatar--xs"><img src="vici/assets/brand/portrait-96.jpg" alt="" width="96" height="96"></span>
+        <span class="vc-byline__name">Victor Pflüger</span>
+        <img class="vc-platform-mark" src="vici/assets/marks/linkedin.png" alt="" width="840" height="779">
+        <span class="vc-visually-hidden" data-i18n="p.byline.linkedin"> on LinkedIn (opens in a new tab)</span>
+      </a>
+      <span class="vc-tooltip-anchor">
+        <a class="vc-byline__icon" href="https://victorpflueger.github.io/VIP/index.html" rel="author noopener" target="_blank" aria-label="Victor Pflüger's website (opens in a new tab)" data-i18n-attr="aria-label:p.byline.website"><span class="vc-icon vc-icon--globe-hex" aria-hidden="true"></span></a>
+        <span class="vc-tooltip vc-tooltip--bottom" aria-hidden="true" data-i18n="p.byline.tip">Website</span>
+      </span>
+    </p>
+  </div>
+
+  <main class="workspace" id="main">
+    <!-- The SWOT grid: internal above external, helpful on the left, harmful on the right (brief 6.1).
+         From version 0.2.0 it holds the company's items and their states. -->
+    <section class="stage" id="swot" tabindex="-1" aria-labelledby="swot-title">
+      <h1 class="stage-title" id="swot-title" data-i18n="p.swot.title">A SWOT analysis in four fields</h1>
+      <p class="stage-lead" data-i18n="p.swot.lead">It sorts what helps a company and what hurts it, inside the company and outside it. Each field answers one question.</p>
+      <div class="swot" role="group" aria-label="The four fields of a SWOT analysis" data-i18n-attr="aria-label:p.swot.grid">
+        <span class="swot-axis swot-axis--col" data-axis="helpful" aria-hidden="true" data-i18n="p.swot.helps">Helps</span>
+        <span class="swot-axis swot-axis--col" data-axis="harmful" aria-hidden="true" data-i18n="p.swot.hurts">Hurts</span>
+        <span class="swot-axis swot-axis--row" data-axis="internal" aria-hidden="true" data-i18n="p.swot.inside">Inside the company</span>
+        <span class="swot-axis swot-axis--row" data-axis="external" aria-hidden="true" data-i18n="p.swot.outside">Outside the company</span>
+        <section class="quad" data-quad="strengths" aria-labelledby="q-strengths">
+          <h2 class="quad-name" id="q-strengths"><span class="quad-letter" aria-hidden="true">S</span><span data-i18n="q.strengths">Strengths</span></h2>
+          <p class="quad-question" data-i18n="q.strengths.question">What do we do better than rivals, as customers see it?</p>
+          <p class="quad-fault" data-i18n="q.strengths.fault">Often wrong here: a strength every rival has, or one that nothing supports.</p>
+        </section>
+        <section class="quad" data-quad="weaknesses" aria-labelledby="q-weaknesses">
+          <h2 class="quad-name" id="q-weaknesses"><span class="quad-letter" aria-hidden="true">W</span><span data-i18n="q.weaknesses">Weaknesses</span></h2>
+          <p class="quad-question" data-i18n="q.weaknesses.question">Where do we fall short, and who notices?</p>
+          <p class="quad-fault" data-i18n="q.weaknesses.fault">Often wrong here: a problem from outside the company, filed as a weakness.</p>
+        </section>
+        <section class="quad" data-quad="opportunities" aria-labelledby="q-opportunities">
+          <h2 class="quad-name" id="q-opportunities"><span class="quad-letter" aria-hidden="true">O</span><span data-i18n="q.opportunities">Opportunities</span></h2>
+          <p class="quad-question" data-i18n="q.opportunities.question">Which developments outside the company could we use?</p>
+          <p class="quad-fault" data-i18n="q.opportunities.fault">Often wrong here: an opportunity that needs exactly what a weakness lacks.</p>
+        </section>
+        <section class="quad" data-quad="threats" aria-labelledby="q-threats">
+          <h2 class="quad-name" id="q-threats"><span class="quad-letter" aria-hidden="true">T</span><span data-i18n="q.threats">Threats</span></h2>
+          <p class="quad-question" data-i18n="q.threats.question">Which developments outside the company could hurt us?</p>
+          <p class="quad-fault" data-i18n="q.threats.fault">Often wrong here: the threat nobody listed, or one that is out of date.</p>
+        </section>
+      </div>
+    </section>
+
+    <!-- What a run does, step by step, and the two ways to run it. From version 0.2.0 this panel shows
+         the step on screen, with the "Your turn" bar under it. -->
+    <section class="story" aria-labelledby="run-title">
+      <h2 class="story-title" id="run-title" data-i18n="p.run.title">What the agents do with it</h2>
+      <p class="story-lead" data-i18n="p.run.lead">Five agents take a SWOT through six steps. Code computes every figure; you check what the AI adds and choose the strategies.</p>
+      <ol class="run-steps">
+        <li data-step="start"><span class="run-step-name" data-i18n="p.step.start">Start</span> <span class="run-step-line" data-i18n="p.step.start.line">A company and the SWOT its team wrote.</span></li>
+        <li data-step="complete"><span class="run-step-name" data-i18n="p.step.complete">Complete</span> <span class="run-step-line" data-i18n="p.step.complete.line">The Completer fills every field to three items or more, marked in lilac.</span></li>
+        <li data-step="challenge"><span class="run-step-name" data-i18n="p.step.challenge">Challenge</span> <span class="run-step-line" data-i18n="p.step.challenge.line">The Red team marks what is misfiled, unsupported or missing.</span></li>
+        <li data-step="assess"><span class="run-step-name" data-i18n="p.step.assess">Assess</span> <span class="run-step-line" data-i18n="p.step.assess.line">The Analyst prices each issue in the sector's own figures and rates every item.</span></li>
+        <li data-step="strategise"><span class="run-step-name" data-i18n="p.step.strategise">Strategise</span> <span class="run-step-line" data-i18n="p.step.strategise.line">The Strategist pairs the company's strengths and weaknesses with the world outside.</span></li>
+        <li data-step="summary"><span class="run-step-name" data-i18n="p.step.summary">Summary</span> <span class="run-step-line" data-i18n="p.step.summary.line">The Writer sums it up, and the report downloads as PDF, HTML and JSON.</span></li>
+      </ol>
+      <h2 class="story-subtitle" data-i18n="p.modes.title">Two ways to run it</h2>
+      <dl class="modes">
+        <div class="mode" data-mode="simulation">
+          <dt data-i18n="p.modes.sim">Simulation</dt>
+          <dd data-i18n="p.modes.sim.text">Three fictional companies, played with no key and at no cost.</dd>
+        </div>
+        <div class="mode" data-mode="live">
+          <dt><span data-i18n="p.modes.live">Live</span> <span class="vc-tag vc-tag--feature ai-notice"><span class="vc-icon vc-icon--sparkle" aria-hidden="true"></span><span data-i18n="p.ai">You are interacting with an AI system</span></span></dt>
+          <dd data-i18n="p.modes.live.text">Your company and your own Claude API key, within a budget you set. Nothing is kept.</dd>
+        </div>
+      </dl>
+      <p class="version-note" data-i18n="p.version">This is version 0.1.0: the frame, the engine and the data contracts. The simulation comes with version 0.2.0 and live runs with version 0.3.0.</p>
+    </section>
+  </main>
+
+  <dialog class="vc-dialog vc-guide" id="guide-en" lang="en-GB" aria-labelledby="guide-en-title" data-vc-guide data-vc-guide-auto data-vc-guide-count="{n} of {total}" data-vc-guide-rail="Chapters">
+    <header class="vc-dialog__header">
+      <h2 class="vc-dialog__title" id="guide-en-title">How the prototype works</h2>
+      <button type="button" class="vc-icon-button" data-vc-close aria-label="Close"><span class="vc-icon vc-icon--close" aria-hidden="true"></span></button>
+    </header>
+    <div class="vc-guide__chapters">
+      <section class="vc-guide__chapter" data-vc-chapter="what" data-vc-nav="What it does">
+        <h3>A SWOT analysis, put to the test</h3>
+        <p class="vc-guide__lead">You name a company and enter what you know of its SWOT analysis. Five AI agents complete it, challenge every item, price what is wrong or missing and turn it into strategies.</p>
+        <div class="vc-table-wrap"><table class="vc-table vc-table--compact">
+          <caption>What goes in and what comes out</caption>
+          <tbody>
+            <tr><th scope="row">In</th><td>A company and what its team knows of its strengths, weaknesses, opportunities and threats</td></tr>
+            <tr><th scope="row">Out</th><td>The SWOT completed and challenged, each issue priced a year, the strategies you chose and a report</td></tr>
+            <tr><th scope="row">You decide</th><td>Which of the AI's items stay and which strategies the company takes</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+      <section class="vc-guide__chapter" data-vc-chapter="how" data-vc-nav="How it works">
+        <h3>The AI estimates, code does the sums</h3>
+        <p class="vc-guide__lead">The agents put their estimates into structured fields. Code checks every answer and computes every score and amount; the four figures at the top sum up the case.</p>
+        <div class="vc-table-wrap"><table class="vc-table vc-table--compact">
+          <caption>Key figures</caption>
+          <thead><tr><th scope="col">Figure</th><th scope="col">What it measures</th><th scope="col">Value</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">At stake a year</th><td>What the issues found could cost a year: each euro range's midpoint times its likelihood</td><td>Set by the company you open</td></tr>
+            <tr><th scope="row">Items challenged</th><td>How many of the SWOT's items the Red team questions, and how many missing ones it adds</td><td>Set by the challenge</td></tr>
+            <tr><th scope="row">Response to the market</th><td>How well the company answers what happens outside it, from 1 to 4, where 2.50 is average</td><td>Set by the assessment</td></tr>
+            <tr><th scope="row">Session cost</th><td>What the model calls cost: estimated for a simulated run, measured in a live one</td><td>Set by the run</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+      <section class="vc-guide__chapter" data-vc-chapter="real" data-vc-nav="What is real">
+        <h3>Real methods and facts, fictional companies</h3>
+        <p class="vc-guide__lead">The methods are published ones, and every fact about the world carries its source and the date it was read. The companies are fictional and their figures illustrative.</p>
+        <div class="vc-table-wrap"><table class="vc-table vc-table--compact">
+          <caption>Where everything comes from</caption>
+          <tbody>
+            <tr><th scope="row">Real</th><td>Fred R. David's factor tables and IE matrix, Heinz Weihrich's TOWS matrix, and every dated fact</td></tr>
+            <tr><th scope="row">Fictional</th><td>The three companies and their own figures</td></tr>
+            <tr><th scope="row">Estimated</th><td>Every weight, rating and euro range the AI gives: a structured judgement, not a measurement</td></tr>
+            <tr><th scope="row">Live</th><td>With your key, the agents work on your company. The page keeps nothing; you keep what you download</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+      <section class="vc-guide__chapter" data-vc-chapter="present" data-vc-nav="How to present">
+        <h3>Show it in five minutes</h3>
+        <p class="vc-guide__lead">From version 0.2.0, the run plays by itself and stops where you act. Then follow these five steps. Version 0.1.0 shows only the method.</p>
+        <ol class="vc-guide__path">
+          <li><strong>Point at the key figures.</strong> <span class="vc-guide__say">“These four figures sum up the case before anything runs.”</span> <span class="vc-guide__time">1 min</span></li>
+          <li><strong>Open Arvento Drives and its SWOT.</strong> <span class="vc-guide__say">“Its team wrote this; lilac marks what the AI added.”</span> <span class="vc-guide__time">1 min</span></li>
+          <li><strong>Press Challenge this SWOT.</strong> <span class="vc-guide__say">“A misfiled item and a missing threat turn red.”</span> <span class="vc-guide__time">1 min</span></li>
+          <li><strong>Choose two strategies and press Adopt these strategies.</strong> <span class="vc-guide__say">“The response to the market passes the average, and what is at stake falls.”</span> <span class="vc-guide__time">1.5 min</span></li>
+          <li><strong>Download the report.</strong> <span class="vc-guide__say">“Every page of the PDF says where it comes from.”</span> <span class="vc-guide__time">0.5 min</span></li>
+        </ol>
+      </section>
+    </div>
+    <footer class="vc-dialog__footer vc-guide__footer">
+      <span class="vc-guide__count"></span>
+      <button type="button" class="vc-button vc-button--ghost" data-vc-guide-back><span class="vc-icon vc-icon--chevron-left" aria-hidden="true"></span>Back</button>
+      <button type="button" class="vc-button" data-vc-guide-next data-vc-guide-done="Start">Next<span class="vc-icon vc-icon--chevron-right" aria-hidden="true"></span></button>
+    </footer>
+  </dialog>
+
+  <dialog class="vc-dialog vc-guide" id="guide-de" lang="de" aria-labelledby="guide-de-title" data-vc-guide data-vc-guide-auto data-vc-guide-count="{n} von {total}" data-vc-guide-rail="Kapitel">
+    <header class="vc-dialog__header">
+      <h2 class="vc-dialog__title" id="guide-de-title">So funktioniert der Prototyp</h2>
+      <button type="button" class="vc-icon-button" data-vc-close aria-label="Schließen"><span class="vc-icon vc-icon--close" aria-hidden="true"></span></button>
+    </header>
+    <div class="vc-guide__chapters">
+      <section class="vc-guide__chapter" data-vc-chapter="what" data-vc-nav="Was er tut">
+        <h3>Eine SWOT-Analyse auf dem Prüfstand</h3>
+        <p class="vc-guide__lead">Sie nennen ein Unternehmen und tragen ein, was Sie von seiner SWOT-Analyse wissen. Fünf KI-Agenten vervollständigen sie, stellen jeden Punkt infrage, beziffern, was falsch ist oder fehlt, und machen daraus Strategien.</p>
+        <div class="vc-table-wrap"><table class="vc-table vc-table--compact">
+          <caption>Was hineingeht und was herauskommt</caption>
+          <tbody>
+            <tr><th scope="row">Hinein</th><td>Ein Unternehmen und was sein Team über seine Stärken, Schwächen, Chancen und Risiken weiß</td></tr>
+            <tr><th scope="row">Heraus</th><td>Die SWOT vervollständigt und geprüft, jedes Problem pro Jahr beziffert, die gewählten Strategien und ein Bericht</td></tr>
+            <tr><th scope="row">Sie entscheiden</th><td>Welche Punkte der KI bleiben und welche Strategien das Unternehmen verfolgt</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+      <section class="vc-guide__chapter" data-vc-chapter="how" data-vc-nav="So funktioniert's">
+        <h3>Die KI schätzt, der Code rechnet</h3>
+        <p class="vc-guide__lead">Die Agenten tragen ihre Schätzungen in feste Felder ein. Code prüft jede Antwort und rechnet jeden Wert und jeden Betrag; die vier Kennzahlen oben fassen den Fall zusammen.</p>
+        <div class="vc-table-wrap"><table class="vc-table vc-table--compact">
+          <caption>Kennzahlen</caption>
+          <thead><tr><th scope="col">Kennzahl</th><th scope="col">Was sie misst</th><th scope="col">Wert</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Jährlich auf dem Spiel</th><td>Was die gefundenen Probleme im Jahr kosten könnten: die Mitte jeder Euro-Spanne mal ihre Wahrscheinlichkeit</td><td>Kommt mit dem Unternehmen, das Sie öffnen</td></tr>
+            <tr><th scope="row">Beanstandete Punkte</th><td>Wie viele Punkte der SWOT das Red Team beanstandet und wie viele fehlende es ergänzt</td><td>Kommt mit der Prüfung</td></tr>
+            <tr><th scope="row">Antwort auf den Markt</th><td>Wie gut das Unternehmen auf das antwortet, was außerhalb geschieht, von 1 bis 4, Durchschnitt 2,50</td><td>Kommt mit der Bewertung</td></tr>
+            <tr><th scope="row">Sitzungskosten</th><td>Was die Aufrufe des Modells kosten: geschätzt für einen simulierten Lauf, gemessen in einem Live-Lauf</td><td>Kommt mit dem Lauf</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+      <section class="vc-guide__chapter" data-vc-chapter="real" data-vc-nav="Was echt ist">
+        <h3>Echte Methoden und Fakten, erfundene Unternehmen</h3>
+        <p class="vc-guide__lead">Die Methoden sind veröffentlicht, und jeder Fakt über die Welt trägt seine Quelle und das Datum, an dem er gelesen wurde. Die Unternehmen sind erfunden, ihre Zahlen beispielhaft.</p>
+        <div class="vc-table-wrap"><table class="vc-table vc-table--compact">
+          <caption>Woher alles kommt</caption>
+          <tbody>
+            <tr><th scope="row">Echt</th><td>Fred R. Davids Faktortabellen und IE-Matrix, Heinz Weihrichs TOWS-Matrix und jeder datierte Fakt</td></tr>
+            <tr><th scope="row">Erfunden</th><td>Die drei Unternehmen und ihre eigenen Zahlen</td></tr>
+            <tr><th scope="row">Geschätzt</th><td>Jedes Gewicht, jede Note und jede Euro-Spanne der KI: ein strukturiertes Urteil, keine Messung</td></tr>
+            <tr><th scope="row">Live</th><td>Mit Ihrem Schlüssel arbeiten die Agenten an Ihrem Unternehmen. Die Seite speichert nichts; Sie behalten, was Sie herunterladen</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+      <section class="vc-guide__chapter" data-vc-chapter="present" data-vc-nav="So führen Sie vor">
+        <h3>In fünf Minuten vorführen</h3>
+        <p class="vc-guide__lead">Ab Version 0.2.0 spielt der Lauf von selbst und hält, wo Sie handeln. Dann folgen Sie diesen fünf Schritten. Version 0.1.0 zeigt nur die Methode.</p>
+        <ol class="vc-guide__path">
+          <li><strong>Auf die Kennzahlen zeigen.</strong> <span class="vc-guide__say">„Diese vier Zahlen fassen den Fall zusammen, bevor etwas läuft.“</span> <span class="vc-guide__time">1 min</span></li>
+          <li><strong>Arvento Drives und seine SWOT öffnen.</strong> <span class="vc-guide__say">„Das hat sein Team geschrieben; Lila zeigt, was die KI ergänzt hat.“</span> <span class="vc-guide__time">1 min</span></li>
+          <li><strong>Diese SWOT prüfen drücken.</strong> <span class="vc-guide__say">„Ein falsch einsortierter Punkt und ein fehlendes Risiko werden rot.“</span> <span class="vc-guide__time">1 min</span></li>
+          <li><strong>Zwei Strategien wählen und Diese Strategien übernehmen drücken.</strong> <span class="vc-guide__say">„Die Antwort auf den Markt steigt über den Durchschnitt, und was auf dem Spiel steht, sinkt.“</span> <span class="vc-guide__time">1,5 min</span></li>
+          <li><strong>Den Bericht herunterladen.</strong> <span class="vc-guide__say">„Jede Seite des PDF sagt, woher sie stammt.“</span> <span class="vc-guide__time">0,5 min</span></li>
+        </ol>
+      </section>
+    </div>
+    <footer class="vc-dialog__footer vc-guide__footer">
+      <span class="vc-guide__count"></span>
+      <button type="button" class="vc-button vc-button--ghost" data-vc-guide-back><span class="vc-icon vc-icon--chevron-left" aria-hidden="true"></span>Zurück</button>
+      <button type="button" class="vc-button" data-vc-guide-next data-vc-guide-done="Starten">Weiter<span class="vc-icon vc-icon--chevron-right" aria-hidden="true"></span></button>
+    </footer>
+  </dialog>
+
+  <!-- Boot screen: removed by js/main.js once the page has started. Opened from disk (file://), where
+       browsers block program modules, it stays and says what to do. -->
+  <div id="boot" class="boot" data-state="loading">
+    <div class="boot-card">
+      <p class="boot-brand"><span class="vc-cell vc-cell--lilac vc-cell--xl" aria-hidden="true"><span class="vc-icon vc-icon--scale"></span></span>SWOT Challenger</p>
+      <p class="boot-status" role="status"><span class="vc-spinner" aria-hidden="true"></span><span id="boot-status"><span data-boot-lang="en">Starting the SWOT Challenger…</span><span data-boot-lang="de" lang="de" hidden>Der SWOT Challenger startet…</span></span></p>
+      <p id="boot-detail" class="vc-alert vc-alert--danger boot-detail" hidden></p>
+      <p class="boot-help" data-boot-lang="en">Still on this screen? Serve the folder over http, for example with <code>python -m http.server 8000</code>, and open <code>http://localhost:8000</code>. Browsers don't run its modules from a file.</p>
+      <p class="boot-help" data-boot-lang="de" lang="de" hidden>Hängt es hier? Liefern Sie den Ordner über http aus, etwa mit <code>python -m http.server 8000</code>, und öffnen Sie <code>http://localhost:8000</code>. Aus einer Datei führen Browser die Module nicht aus.</p>
+      <noscript><p class="boot-detail">The SWOT Challenger needs JavaScript. Allow it for this site and reload the page.</p><p class="boot-detail" lang="de">Der SWOT Challenger braucht JavaScript. Erlauben Sie es für diese Seite und laden Sie sie neu.</p></noscript>
+    </div>
+  </div>
+
+  <!-- Runs here, before vici.js, so the guide that opens by itself is the one in the page's language. -->
+  <script src="js/lang.js"></script>
+</body>
+</html>
