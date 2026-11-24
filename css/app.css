@@ -492,7 +492,14 @@ html[lang="de"] .play.vc-button { min-width: 9.5rem; }
 .live-key-status[data-tone="danger"] { color: var(--vc-danger-text); font-weight: var(--vc-weight-semibold); }
 .live-key-status[data-tone="ok"] { color: var(--vc-success-text); }
 .vc-live__warning ul { margin: 4px 0; padding-left: 1.1rem; }
-.live-why { margin: 0 0 0 auto; max-width: 13rem; color: var(--vc-text-muted); font-size: var(--vc-font-size-xs); line-height: 1.3; text-align: right; }
+/* The brief asks more of the key's part than Vici's demo shows (the plan note), so two parts put their help or
+   label beside the control: every part shows at 1280 × 720 without scrolling until a warning appears, as Vici's
+   live-run dialog promises (TECH_NOTES.md 11.11). */
+@media (min-width: 40rem) {
+  .vc-live__setting, .vc-live__cap { grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: var(--vc-space-4); }
+  .vc-live__cap > .vc-help { grid-column: 1 / -1; }
+}
+.live-why { flex: 1 1 0; min-width: 0; margin: 0 0 0 auto; max-width: 13rem; color: var(--vc-text-muted); font-size: var(--vc-font-size-xs); line-height: 1.3; text-align: right; }
 .live-why:empty { display: none; }
 
 /* ---------------------------------------------------------------- larger and smaller windows */

@@ -8,8 +8,10 @@
 //   - the bar under the story is in the window, and at Strategise every strategy card shows in full above
 //     it, also with six strategies in one cell and the longest titles the contract allows;
 //   - the header keeps its height when the decision moves the key figures;
-//   - a live run's screens hold as well: the Start form empty and filled, the live-run dialog with its start
-//     button and the AI notice in view, the wait, the check of the AI's items and an error; "Run it live"
+//   - a live run's screens hold as well: the Start form empty and filled, the live-run dialog (at its first
+//     opening every part shows without scrolling, the estimate too, as Vici's pattern has it until a warning
+//     appears; then its start button and the AI notice stay in view), the wait, the check of the AI's items
+//     and an error; "Run it live"
 //     is in view in the step bar on every step, and with the AI notice beside it on Start and Summary,
 //     where the story offers it (TECH_NOTES.md, section 11). The API is a scripted stand-in.
 // Hyphenation is off (tests/fixtures/no-hyphens.css), as in a Chromium without hyphenation dictionaries,
@@ -122,6 +124,16 @@ async function liveViews(page, server, lang, api) {
   await look("filled Start form");
   await page.click("#btn-cta");
   await page.waitForSelector("#live-dialog[open]");
+  // Vici's live-run dialog: at its first opening, with no warning, every part shows without scrolling.
+  await page.waitForTimeout(300);
+  const fit = await page.evaluate(() => {
+    const body = document.querySelector("#live-dialog .vc-live__body");
+    const box = body.getBoundingClientRect();
+    const shown = (sel) => { const el = document.querySelector(sel); if (!el) return false; const r = el.getBoundingClientRect(); return r.height > 0 && r.top >= box.top - 0.5 && r.bottom <= box.bottom + 0.5 && r.bottom <= window.innerHeight + 1; };
+    return { warning: !document.getElementById("live-warning").hidden, scroll: body.scrollHeight - body.clientHeight, missing: ["#live-key", ".vc-live__research", "#live-cap", "#live-ack", "#live-estimate"].filter((sel) => !shown(sel)) };
+  });
+  if (fit.warning) out.push("live dialog: a warning shows for the fictional company's SWOT");
+  else if (fit.scroll > 1 || fit.missing.length) out.push(`live dialog: at its first opening the body scrolls by ${Math.round(fit.scroll)} px${fit.missing.length ? `; not in view: ${fit.missing.join(", ")}` : ""}`);
   await page.fill("#live-key", MOCK_KEY);
   await page.check("#live-ack");
   await look("dialog");
@@ -200,7 +212,7 @@ try {
         await page.unroute("**/data/scenarios/s2.js");
         check(!problems.length && !errors.length, `${name}: all 18 steps of the three scenarios, and six strategies in one cell${[...problems, ...errors].length ? `:\n      ${[...problems, ...errors].slice(0, 12).join("\n      ")}` : ""}`);
         const live = await liveViews(page, server, lang, api);
-        check(!live.length && !errors.length, `${name}: the live screens, Run it live and the dialog's start button with the AI notice in view${[...live, ...errors].length ? `:\n      ${[...live, ...errors].slice(0, 12).join("\n      ")}` : ""}`);
+        check(!live.length && !errors.length, `${name}: the live screens, Run it live, the dialog whole at its first opening and its start button with the AI notice in view${[...live, ...errors].length ? `:\n      ${[...live, ...errors].slice(0, 12).join("\n      ")}` : ""}`);
         await context.close();
       }
     }

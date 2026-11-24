@@ -382,9 +382,9 @@ export default {
   "d.preset.fast": "Schnell",
   "d.preset.balanced": "Ausgewogen",
   "d.preset.thorough": "Gründlich",
-  "d.setting.help": "Ausgewogen passt für die meisten Läufe. Schnell denkt weniger nach; Gründlich nutzt ein größeres Modell und kostet etwa zwanzigmal so viel.",
+  "d.setting.help": "Ausgewogen passt für die meisten Läufe; Gründlich kostet etwa das Zwanzigfache.",
   "d.research": "Zuerst nach aktuellen Nachrichten suchen",
-  "d.research.help": "Kostet etwa {eur} mehr für fünf Websuchen. Die Modelle kennen die Welt bis Juni 2026; die Suche findet, was seither geschah.",
+  "d.research.help": "Etwa {eur} mehr für fünf Websuchen; die Modelle kennen die Welt nur bis Juni 2026.",
   "d.advanced": "Erweitert",
   "d.model": "Modell",
   "d.model.setting": "Modell der Einstellung",
@@ -510,7 +510,7 @@ export default {
   "d.warn.in.company": "im Namen des Unternehmens",
   "d.warn.in.description": "im Satz dazu",
   "d.warn.in.quadrant": "im Feld {quadrant}",
-  "d.why.key": "Fügen Sie Ihren Schlüssel ein, um zu starten.",
-  "d.why.ack": "Setzen Sie oben den Haken, um zu starten.",
+  "d.why.key": "Fügen Sie erst Ihren Schlüssel ein.",
+  "d.why.ack": "Setzen Sie erst oben den Haken.",
   "p.live.return": "Zurück zum Live-Lauf"
 };
