@@ -244,7 +244,9 @@ export function towsMatrix({ run, lang, selection, onToggle, open }) {
   const w = many("WO", "WT");
   const ratio = (x, y) => `${Math.min(3, Math.max(1, x / y)).toFixed(2)}fr`;
   return h("div", { class: "tows-wrap" },
-    h("div", { class: "tows", role: "group", "aria-label": t("s.strat.matrix"), vars: { "--tows-s": ratio(s, w), "--tows-w": ratio(w, s) } },
+    // A row whose two cells hold no strategy drops its upright label, which would set the row's height on
+    // its own: each cell says "No strategy here", and the room goes to the row that holds the strategies.
+    h("div", { class: "tows", role: "group", "aria-label": t("s.strat.matrix"), dataset: { emptyO: String(!byType.SO.length && !byType.WO.length), emptyT: String(!byType.ST.length && !byType.WT.length) }, vars: { "--tows-s": ratio(s, w), "--tows-w": ratio(w, s) } },
       h("p", { class: "tows-head tows-head--col", dataset: { head: "s" }, "aria-hidden": "true" }, t("q.strengths")),
       h("p", { class: "tows-head tows-head--col", dataset: { head: "w" }, "aria-hidden": "true" }, t("q.weaknesses")),
       h("p", { class: "tows-head tows-head--row", dataset: { head: "o" }, "aria-hidden": "true" }, t("q.opportunities")),

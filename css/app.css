@@ -316,6 +316,7 @@ html[lang="de"] .play.vc-button { min-width: 9.5rem; }
 .tows-head { margin: 0; color: var(--vc-text-muted); font-size: var(--vc-font-size-xs); font-weight: var(--vc-weight-semibold); letter-spacing: var(--vc-tracking-caps); text-transform: uppercase; }
 .tows-head--col { align-self: end; }
 .tows-head--row { align-self: center; writing-mode: vertical-rl; transform: rotate(180deg); }
+.tows[data-empty-o="true"] .tows-head[data-head="o"], .tows[data-empty-t="true"] .tows-head[data-head="t"] { display: none; }
 .tows-cell { container: cell / inline-size; display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 8px 10px 10px; border: 1px solid var(--vc-border-subtle); border-radius: var(--vc-radius-md); background: var(--vc-bg-sunken); }
 /* A narrow cell keeps its code and kind on one line; the row and column labels name its two sides, and
    the full name stays for screen readers. */
