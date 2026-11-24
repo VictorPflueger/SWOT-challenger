@@ -8,6 +8,8 @@
 //   - the bar under the story is in the window, and at Strategise every strategy card shows in full above
 //     it, also with six strategies in one cell and the longest titles the contract allows;
 //   - the header keeps its height when the decision moves the key figures;
+//   - at the Summary the report card holds, and the report the bar opens fits the window with Save as PDF
+//     in view;
 //   - a live run's screens hold as well: the Start form empty and filled, the live-run dialog (at its first
 //     opening every part shows without scrolling, the estimate too, as Vici's pattern has it until a warning
 //     appears; then its start button and the AI notice stay in view), the wait, the check of the AI's items
@@ -194,6 +196,16 @@ try {
             await page.evaluate(() => { for (const d of document.querySelectorAll("details.numbers")) d.open = true; });
             const open = await page.evaluate(measure);
             for (const p of new Set([...m.problems, ...open.problems])) problems.push(`${id} step ${step}: ${p}`);
+            // At the Summary, the bar's action opens the report: its sheets fit the window, and Save as PDF is in view.
+            if (step === 5) {
+              await page.click("#btn-cta");
+              await page.waitForSelector("#report-dialog[open]");
+              const d = await page.evaluate(measure);
+              for (const p of d.problems) problems.push(`${id} the report: ${p}`);
+              if (!(await page.evaluate(inView, "#rp-pdf-dialog"))) problems.push(`${id} the report: Save as PDF is not in view`);
+              await page.keyboard.press("Escape");
+              await page.waitForFunction(() => !document.getElementById("report-dialog").open);
+            }
             const key = `${name}|${id}`;
             if (!headers.has(key)) headers.set(key, new Set());
             headers.get(key).add(m.header);

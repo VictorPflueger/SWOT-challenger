@@ -6,8 +6,15 @@
 export const APP = Object.freeze({
   id: "swot",
   name: "SWOT Challenger",
-  version: "0.3.0",
+  version: "0.4.0",
   url: "https://victorpflueger.github.io/SWOT-challenger/"
+});
+
+/** Who built the tool, as Vici's profile (src/brand/profile.json) names him: the report's byline uses it. */
+export const AUTHOR = Object.freeze({
+  name: "Victor Pflüger",
+  linkedin: "https://www.linkedin.com/in/victorpflueger",
+  website: "https://victorpflueger.github.io/VIP/index.html"
 });
 
 /**

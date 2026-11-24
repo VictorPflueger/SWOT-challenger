@@ -36,8 +36,9 @@ control(pairProblems({ a: "" }, { a: "x" }).length === 1, "control: an empty val
 const pair = pairProblems(EN, DE);
 check(!pair.length, `en.js and de.js: the same ${Object.keys(EN).length} keys, no empty value, the same placeholders${pair.length ? `: ${pair.join("; ")}` : ""}`);
 
-// Texts that read the same in both languages on purpose: names and codes.
-const SAME_ALLOWED = new Set(["app.name", "p.mode.simulation", "p.mode.live", "p.kpi.waiting", "p.byline.tip", "p.step.start", "p.modes.sim", "p.modes.live", "p.pause", "p.item.issue", "s.assess.score", "m.kpis.definition", "s.live.name", "d.key.placeholder", "w.time"]);
+// Texts that read the same in both languages on purpose: names and codes, and rp.model.live, which is
+// three names in a row ("{model}, {setting}, {research}").
+const SAME_ALLOWED = new Set(["app.name", "p.mode.simulation", "p.mode.live", "p.kpi.waiting", "p.byline.tip", "p.step.start", "p.modes.sim", "p.modes.live", "p.pause", "p.item.issue", "s.assess.score", "m.kpis.definition", "s.live.name", "d.key.placeholder", "w.time", "rp.model.live"]);
 const same = Object.keys(EN).filter((k) => EN[k] === DE[k] && /\p{L}{3,}/u.test(EN[k]) && !SAME_ALLOWED.has(k));
 check(!same.length, `every text is translated, the same in both only for names and codes${same.length ? `: ${same.join(", ")}` : ""}`);
 
@@ -94,8 +95,9 @@ check(/^<!doctype html>\s*<html lang="en-GB"/i.test(html), "index.html opens in 
 // ---- no sentence typed into the code -----------------------------------------------------------------
 // Messages for developers (the console, a thrown error, a JSDoc) are not on screen and stay in English.
 control(looksLikeProse("The key was rejected, check it in the Console"), "control: a sentence in code is recognised as prose");
-// The product's name (js/config.js) and the browser's own text for a script error that main.js ignores.
-const NOT_PROSE = new Set(["SWOT Challenger", "Script error."]);
+// The product's name and its author's (js/config.js), and the browser's own text for a script error that
+// main.js ignores.
+const NOT_PROSE = new Set(["SWOT Challenger", "Victor Pflüger", "Script error."]);
 // The scenario checker's messages are for whoever edits a scenario, never on screen: English only. The
 // shared live client stays the sister tools' file, unchanged: its texts are for the console and for
 // js/api_messages.js, which turns every error it reports into words of the page's language.

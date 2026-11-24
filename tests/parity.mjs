@@ -7,7 +7,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { APP_ROOT } from "./lib/harness.mjs";
 
-const SHARED = ["data/kpis.js", "schemas/strategy-challenge-1.json", "schemas/strategy-challenge-1.js", "js/risk.js", "js/anthropic.js", "js/sse.js", "js/cost.js", "js/keystore.js"];
+const SHARED = ["data/kpis.js", "schemas/strategy-challenge-1.json", "schemas/strategy-challenge-1.js", "js/risk.js", "js/anthropic.js", "js/sse.js", "js/cost.js", "js/keystore.js", "tests/lib/pdf-text.mjs"];
 const SIBLINGS = ["BMC-challenger", "PESTEL-challenger", "PrototypeIdeator"];
 const results = [];
 const notes = [];

@@ -12,6 +12,7 @@ import { CELLS, ZONE, SIDE } from "./engine.js";
 import { strategyEffect } from "./scenario.js";
 import { TOWS, strategiesByType } from "./simulation.js";
 import { STRATEGY_KINDS as KIND } from "../schemas/swot.js";
+import { kpiById } from "../data/kpis.js";
 
 /** The SWOT's letters, the same in both languages. */
 const LETTER = Object.freeze({ strengths: "S", weaknesses: "W", opportunities: "O", threats: "T" });
@@ -217,3 +218,18 @@ export function towsMatrix({ run, lang, selection, onToggle, open }) {
       cell("ST"), cell("WT")),
     numbers(table));
 }
+
+// ---- KPI effects -------------------------------------------------------------------------------------
+
+/** A KPI effect as the Analyst estimated it: "Share of service revenue: −2 to −1 %". */
+export function kpiText(k, lang) {
+  const lib = kpiById(k.id);
+  const name = lib ? lib.name[lang] : k.name;
+  const n = (x) => new Intl.NumberFormat(lang === "de" ? "de-DE" : "en-GB", { maximumFractionDigits: 2, signDisplay: "exceptZero" }).format(x).replace("-", "−");
+  const unit = k.unit === "€" ? "" : ` ${k.unit}`;
+  const range = k.unit === "€"
+    ? t("s.assess.kpi.range", { low: signedMoney(k.change_low, lang), high: signedMoney(k.change_high, lang), unit: "" }, lang)
+    : t("s.assess.kpi.range", { low: n(k.change_low), high: n(k.change_high), unit }, lang);
+  return `${name}: ${range}`;
+}
+const signedMoney = (x, lang) => (x < 0 ? "−" : x > 0 ? "+" : "") + money(Math.abs(x), lang);

@@ -1,0 +1,185 @@
+/* The SWOT Challenger's report (js/report.js), on Vici's report pattern (components/report.html): the parts
+   that are this tool's own. The key figures as the tiles show them, the SWOT with each item's state in words,
+   the issues with the risk matrix, the factor tables and the IE matrix, the strategies, the sources and the
+   byline. It stays light in both themes, as paper does (the report carries data-theme="light"), and every
+   state has a word beside its colour, so the page reads in grey too. The preview dialog and the thumbnails
+   at the Summary step are here as well. Vici.report.html() takes these rules into the HTML file, so they
+   stand on their own: no rule here depends on the page around the report. */
+
+/* ---------- The document ---------- */
+.report { --report-gap: var(--vc-space-4); font-size: var(--vc-font-size-sm); line-height: 1.5; }
+.report :where(p, ul, ol, dl, figure, table) { margin: 0 0 var(--report-gap); }
+/* The last block of a column or a box keeps no margin below it: on paper a few pixels too many start a page
+   that holds nothing but the footer. */
+.report :where(p, ul, ol, dl, figure, table):last-child { margin-bottom: 0; }
+.report-lead { color: var(--vc-text-muted); max-width: 72ch; }
+.report-note { color: var(--vc-text-muted); font-size: var(--vc-font-size-xs); }
+.report-warn { padding: var(--vc-space-2) var(--vc-space-3); border: 1px solid var(--vc-coral-300); background: var(--vc-coral-50); color: var(--vc-coral-900); }
+.report-ai { color: var(--vc-lilac-800); font-size: var(--vc-font-size-xs); font-weight: var(--vc-weight-semibold); }
+.report-tags { display: flex; flex-wrap: wrap; gap: var(--vc-space-2); margin: var(--vc-space-4) 0 0; }
+.report-list { padding-inline-start: 1.25rem; }
+.report-list > li + li { margin-top: var(--vc-space-1); }
+.report-list--tight { margin: 0; font-size: var(--vc-font-size-xs); }
+.report-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px var(--vc-space-3); font-size: var(--vc-font-size-xs); }
+.report-facts dt { color: var(--vc-text-muted); }
+.report-facts dd { margin: 0; }
+/* In the issue and strategy blocks the labels share one column width, so the blocks line up down the page. */
+.report-facts--aligned { grid-template-columns: 8.5em minmax(0, 1fr); }
+.report:lang(de) .report-facts--aligned { grid-template-columns: 11.5em minmax(0, 1fr); }
+.report-code { display: inline-block; min-width: 2.1em; padding: 0 0.35em; border: 1px solid var(--vc-border-strong); color: var(--vc-text); font-size: 0.85em; font-weight: var(--vc-weight-semibold); text-align: center; }
+
+/* ---------- Page two: the management summary ---------- */
+.report-headline { font-family: var(--vc-font-display); font-size: var(--vc-font-size-xl); font-weight: var(--vc-weight-semibold); line-height: 1.25; text-wrap: balance; max-width: 60ch; }
+.report-figures { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--vc-space-2); }
+.report-figure { display: grid; align-content: start; gap: 2px; padding: var(--vc-space-2) var(--vc-space-3); border: 1px solid var(--vc-border); background: var(--vc-bg-subtle); break-inside: avoid; }
+.report-figure dt { color: var(--vc-text-muted); font-size: var(--vc-font-size-xs); }
+.report-figure dd { margin: 0; }
+.report-figure__value { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 0.4em; }
+.report-figure__main { font-family: var(--vc-font-display); font-size: var(--vc-font-size-xl); font-weight: var(--vc-weight-semibold); font-variant-numeric: tabular-nums; }
+.report-figure__was { color: var(--vc-text-muted); font-size: var(--vc-font-size-xs); font-variant-numeric: tabular-nums; }
+.report-figure__unit { color: var(--vc-text-muted); font-size: var(--vc-font-size-xs); }
+.report-figure__note { color: var(--vc-text-muted); font-size: var(--vc-font-size-2xs); line-height: 1.35; }
+.report-stand { font-weight: var(--vc-weight-semibold); }
+.report-cols { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: var(--vc-space-6); align-items: start; }
+.report-by { color: var(--vc-text-muted); font-size: var(--vc-font-size-xs); }
+.report-next { display: grid; gap: var(--vc-space-3); padding: 0; list-style: none; }
+.report-next > li { padding-block-start: var(--vc-space-2); border-top: 1px solid var(--vc-border-subtle); }
+.report-next__title { margin-bottom: var(--vc-space-1); font-weight: var(--vc-weight-semibold); }
+
+/* ---------- The SWOT ---------- */
+.report-swot { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--vc-space-3); }
+.report-quad { padding: var(--vc-space-3); border: 1px solid var(--vc-border); break-inside: avoid; }
+.report-quad__title { display: flex; align-items: center; gap: var(--vc-space-2); margin: 0 0 var(--vc-space-2); }
+.report-quad__letter { display: inline-grid; place-items: center; width: 1.6em; aspect-ratio: 1.1547; clip-path: var(--vc-hex); background: var(--vc-merlot-950); color: var(--vc-neutral-50); font-size: var(--vc-font-size-xs); font-weight: var(--vc-weight-semibold); }
+.report-items { display: grid; gap: var(--vc-space-1); margin: 0; padding: 0; list-style: none; }
+.report-item { padding-block: 2px; border-bottom: 1px solid var(--vc-border-subtle); }
+.report-item:last-child { border-bottom: 0; }
+.report-item[data-status="challenged"] .report-item__text { text-decoration: underline wavy var(--vc-coral-600) 1px; text-underline-offset: 0.25em; }
+.report-state { display: inline-block; margin-inline-start: 0.25em; padding: 0 0.45em; border: 1px solid transparent; font-size: var(--vc-font-size-2xs); font-weight: var(--vc-weight-semibold); line-height: 1.6; white-space: nowrap; }
+.report-state--ai, .report-state--added { border-color: var(--vc-lilac-300); background: var(--vc-lilac-100); color: var(--vc-lilac-900); }
+.report-state--challenged { border-color: var(--vc-coral-300); background: var(--vc-coral-50); color: var(--vc-coral-900); }
+.report-state--addressed { border-color: var(--vc-sage-300); background: var(--vc-sage-50); color: var(--vc-sage-900); }
+
+/* ---------- The issues ---------- */
+/* The matrix on the left, wide enough for its cells; the list of issues beside it. In the report the score
+   sits above a cell's markers, so two issues in one cell never cover it. */
+.report-risk { display: grid; grid-template-columns: minmax(0, 21rem) minmax(0, 1fr); gap: var(--vc-space-6); align-items: start; }
+.report-risk .vc-risk { max-width: 21rem; margin: 0; }
+.report-risk .vc-risk__cell { padding-top: 1rem; }
+.report-risk table { margin: 0; }
+.report-risk__table, .report-factors, .report-ie__table { table-layout: fixed; width: 100%; }
+.report-risk__table th[scope="row"] { font-weight: var(--vc-weight-regular); }
+.report-col--band { width: 5.8em; }
+.report-col--eur { width: 6.6em; }
+.report-col--num { width: 5.4em; }
+.report-col--label { width: 40%; }
+/* A printed report heads its tables in sentence case, as Vici allows a plainer print style, so a narrow
+   number column takes its word and a long head wraps. */
+.report .vc-table thead th { font-size: 0.85em; text-transform: none; letter-spacing: 0; white-space: normal; overflow-wrap: normal; vertical-align: bottom; }
+/* Tables set their figures at the report's own size, not a screen's. */
+.report .vc-table { font-size: inherit; }
+.report .vc-table caption { padding: 0 0 var(--vc-space-2); font-size: inherit; }
+.report-risk__no, .report-issue__no { display: inline-grid; place-items: center; width: 1.85em; aspect-ratio: 1.1547; clip-path: var(--vc-hex); background: var(--vc-text); color: var(--vc-surface); font-size: var(--vc-font-size-2xs); font-weight: var(--vc-weight-semibold); vertical-align: 0.05em; }
+.report-issues { display: grid; gap: var(--vc-space-4); padding: 0; list-style: none; }
+.report-issue { padding-block-start: var(--vc-space-3); border-top: 1px solid var(--vc-border); }
+.report-issue__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vc-space-2); margin-bottom: var(--vc-space-1); }
+.report-issue__no { font-size: var(--vc-font-size-xs); }
+.report-issue__title { font-weight: var(--vc-weight-semibold); }
+.report-issue__desc { max-width: 80ch; }
+
+/* ---------- Where the company stands: the IE matrix, then the factor tables ---------- */
+/* The matrix on the left; its numbers on the right, with the key to its shades under them. */
+.report-ie { display: grid; grid-template-columns: minmax(0, 22rem) minmax(0, 1fr); grid-template-areas: "plot table" "plot key"; grid-template-rows: auto 1fr; gap: var(--vc-space-3) var(--vc-space-6); align-items: start; margin-bottom: var(--vc-space-4); }
+.report-ie__plot { grid-area: plot; max-width: 22rem; margin: 0; }
+.report-ie__table { grid-area: table; margin: 0; }
+.report-ie__key { grid-area: key; }
+.report-factors { margin-bottom: var(--vc-space-5); }
+.report-factors caption { text-align: start; font-weight: var(--vc-weight-semibold); }
+.report-factors .report-quad__letter { width: 1.4em; font-size: 0.65rem; vertical-align: 0.1em; }
+.report-factors tbody th[scope="row"] { font-weight: var(--vc-weight-regular); }
+.report-ie__words { text-align: end; white-space: normal; }
+.report .report-wrap { white-space: normal; }
+/* The markers keep inside a cell of the narrower printed matrix, "DANACH" too. */
+.report-ie .ie-marker { min-width: 0; padding: 0 0.55rem; letter-spacing: 0.03em; }
+.report-factors__group { text-align: center; }
+.report-factors .report-factors__after { border-inline-start: 1px solid var(--vc-border); }
+.report-factors tr[data-changed="true"] > td:last-child, .report-factors tr[data-changed="true"] > .report-factors__after { background: var(--vc-sage-50); }
+
+/* ---------- Strategies: the TOWS matrix, then the chosen ones in full ---------- */
+.report-tows { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: ". s w" "o SO WO" "t ST WT"; gap: var(--vc-space-2) var(--vc-space-3); margin-bottom: var(--vc-space-2); }
+.report-tows__head { margin: 0; color: var(--vc-text-muted); font-size: var(--vc-font-size-2xs); font-weight: var(--vc-weight-semibold); letter-spacing: var(--vc-tracking-caps); text-transform: uppercase; }
+.report-tows__head[data-head="s"] { grid-area: s; }
+.report-tows__head[data-head="w"] { grid-area: w; }
+.report-tows__head[data-head="o"] { grid-area: o; }
+.report-tows__head[data-head="t"] { grid-area: t; }
+.report-tows__head--row { align-self: center; writing-mode: vertical-rl; transform: rotate(180deg); }
+.report-tows__cell { min-width: 0; padding: var(--vc-space-2) var(--vc-space-3) var(--vc-space-3); border: 1px solid var(--vc-border); background: var(--vc-bg-subtle); break-inside: avoid; }
+.report-tows__cell[data-type="SO"] { grid-area: SO; }
+.report-tows__cell[data-type="WO"] { grid-area: WO; }
+.report-tows__cell[data-type="ST"] { grid-area: ST; }
+.report-tows__cell[data-type="WT"] { grid-area: WT; }
+.report .report-tows__title { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4em; margin: 0; font-family: var(--vc-font-text); font-size: var(--vc-font-size-sm); font-weight: var(--vc-weight-semibold); letter-spacing: 0; }
+.report-tows__kind { margin: 2px 0 var(--vc-space-2); color: var(--vc-text-muted); font-size: var(--vc-font-size-2xs); }
+.report-tows__list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.report-tows__list > li { padding-block: 3px; border-top: 1px solid var(--vc-border-subtle); }
+.report-tows__list > li[data-chosen="true"] .report-tows__name { font-weight: var(--vc-weight-semibold); }
+.report-tows__effect { display: block; color: var(--vc-text-muted); font-size: var(--vc-font-size-xs); }
+.report-tows__cell > .report-note { margin: 0; }
+.report-strat { margin-bottom: var(--vc-space-3); padding: var(--vc-space-2) var(--vc-space-3) var(--vc-space-3); border: 1px solid var(--vc-sage-300); background: var(--vc-sage-50); }
+.report-strat__title { margin-bottom: var(--vc-space-1); font-weight: var(--vc-weight-semibold); }
+.report-strat__kind { margin-inline-start: 0.4em; color: var(--vc-text-muted); font-size: var(--vc-font-size-xs); font-weight: var(--vc-weight-regular); }
+.report-strat > dl { margin: 0; }
+.report-sources > li + li { margin-top: var(--vc-space-2); }
+.report-url { color: var(--vc-text-muted); font-family: var(--vc-font-mono); font-size: var(--vc-font-size-2xs); overflow-wrap: anywhere; }
+.report-public { font-weight: var(--vc-weight-semibold); }
+.report-byline { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vc-space-2) var(--vc-space-3); margin-top: var(--vc-space-6); }
+.report-byline .vc-byline__person { display: inline-flex; align-items: center; gap: var(--vc-space-2); color: var(--vc-text); font-weight: var(--vc-weight-semibold); text-decoration: none; }
+.report-byline__where { color: var(--vc-text-muted); font-size: var(--vc-font-size-xs); }
+.report-byline__where a { color: inherit; }
+.report-mark { width: 1.1em; height: 1.1em; }
+
+@media screen and (max-width: 52rem) {
+  .report-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .report-cols, .report-risk, .report-swot { grid-template-columns: minmax(0, 1fr); }
+  .report-ie { grid-template-columns: minmax(0, 1fr); grid-template-areas: "plot" "table" "key"; }
+  .report-tows { grid-template-columns: minmax(0, 1fr); grid-template-areas: "SO" "WO" "ST" "WT"; }
+  .report-tows__head { display: none; }
+}
+
+@media print {
+  .report { font-size: 9.5pt; line-height: 1.45; }
+  .report-figures { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .report-cols { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
+  .report-risk { grid-template-columns: 80mm minmax(0, 1fr); gap: 7mm; }
+  .report-risk .vc-risk { max-width: none; }
+  .report-ie { grid-template-columns: 82mm minmax(0, 1fr); gap: 3mm 7mm; }
+  .report-ie__plot { max-width: none; }
+  .report-swot { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .report-issue, .report-strat, .report-quad, .report-tows { break-inside: avoid; }
+  /* Paper wants tighter rows than a screen: the factor tables of one page fit beside the IE matrix. */
+  .report .vc-table--compact :is(th, td) { padding: 1mm 1.6mm; }
+}
+
+/* ---------- At the Summary step: the report card and its thumbnails ---------- */
+.report-card { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--vc-space-3) var(--vc-space-4); align-items: start; padding: var(--vc-space-3); border: 1px solid var(--vc-border); background: var(--vc-surface); }
+.report-card__open { position: relative; display: block; width: 7.5rem; height: 5.4rem; padding: 0; border: 0; background: none; cursor: pointer; }
+.report-card__open:focus-visible { outline: var(--vc-stroke-focus) solid var(--vc-focus); outline-offset: 3px; }
+.report-thumb { position: absolute; top: 0; width: 3.7rem; height: 5.2rem; overflow: hidden; border: 1px solid var(--vc-border); background: #fff; box-shadow: 0 1px 2px rgb(37 0 16 / 0.12), 0 4px 12px rgb(37 0 16 / 0.12); }
+.report-thumb:first-child { left: 0; z-index: 1; }
+.report-thumb:nth-child(2) { left: 2.9rem; top: 0.3rem; }
+.report--thumb { display: block; width: 210mm; transform: scale(0.0739); transform-origin: top left; pointer-events: none; }
+.report--thumb .vc-report__page { width: 210mm; max-width: none; min-height: 297mm; border: 0; box-shadow: none; }
+.report-card__body { display: grid; gap: var(--vc-space-2); min-width: 0; }
+.report-card__title { margin: 0; font-size: var(--vc-font-size-md); font-weight: var(--vc-weight-semibold); }
+.report-card__text { margin: 0; color: var(--vc-text-muted); font-size: var(--vc-font-size-xs); }
+.report-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vc-space-2); }
+.report-hint { margin: 0; color: var(--vc-text-muted); font-size: var(--vc-font-size-xs); }
+.report-error { margin: 0; padding: var(--vc-space-1) var(--vc-space-2); border: 1px solid var(--vc-danger-border); background: var(--vc-danger-bg); color: var(--vc-danger-text); font-size: var(--vc-font-size-xs); }
+.report-error[hidden] { display: none; }
+.report-ideator { font-size: var(--vc-font-size-sm); font-weight: var(--vc-weight-semibold); }
+
+/* ---------- The report dialog: the sheets at full width, the downloads above them ---------- */
+.report-dialog { --vc-dialog-width: min(62rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); }
+.report-dialog .vc-dialog__body { padding-block: var(--vc-space-4); background: var(--vc-bg-sunken); }
+.report-tools { display: grid; gap: var(--vc-space-2); padding: var(--vc-space-3) var(--vc-space-5); border-bottom: 1px solid var(--vc-border-subtle); }
+.report-tools .report-actions { justify-content: flex-start; }

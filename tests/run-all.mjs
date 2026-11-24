@@ -2,6 +2,7 @@
 // Usage: node tests/run-all.mjs                  (all suites)
 //        node tests/run-all.mjs engine presenter  (only the named suites)
 //        node tests/run-all.mjs --require-vici  (Vici's checks must run: no ViciDesign checkout fails)
+//        node tests/run-all.mjs --require-ideator  (the Prototype Ideator's reader must run: set IDEATOR_DIR)
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { APP_ROOT } from "./lib/harness.mjs";
@@ -22,15 +23,18 @@ const SUITES = [
   { id: "hygiene", what: "no client, contact or meeting named in any published file", file: "tests/hygiene.mjs", browser: false },
   { id: "docs", what: "the documents complete, their named paths real, the prices dated", file: "tests/docs.mjs", browser: false },
   { id: "parity", what: "the shared files equal the sibling tools' copies, where a sibling has them", file: "tests/parity.mjs", browser: false },
+  { id: "handoff", what: "the handoff file of every scenario, language and choice: the shared schema, the engine's figures, the Prototype Ideator's reader", file: "tests/handoff.mjs", browser: false, ideator: true },
   { id: "vici", what: "Vici's own checks on the page as served and rendered in both languages, the guide render, vici/ at its commit", file: "tests/vici.mjs", browser: true, vici: true },
   { id: "smoke", what: "the page in Chromium: first visit in English, the switch without a reload, one guide per language, what the browser keeps", file: "tests/smoke.mjs", browser: true, vici: true },
   { id: "presenter", what: "the presenter in Chromium: every scenario from Start to Summary in both languages, Play, the address, the tiles, the grid, the Method dialog", file: "tests/presenter.mjs", browser: true, vici: true },
   { id: "layout", what: "the layout at 1920 × 1080 and 1280 × 720, both themes and languages, every step: nothing cut, nothing hidden, nothing scrolls sideways", file: "tests/layout.mjs", browser: true },
   { id: "hexagon", what: "nothing round: the app's files, and the rendered page in both themes", file: "tests/hexagon.mjs", browser: true },
-  { id: "live", what: "the live run against a scripted stand-in for the API: requests, repair, Abort, cap and meter, errors and retries, the dialog, research, the check, nothing kept, the screens nobody demos, Save run as simulation", file: "tests/live.mjs", browser: true, vici: true }
+  { id: "live", what: "the live run against a scripted stand-in for the API: requests, repair, Abort, cap and meter, errors and retries, the dialog, research, the check, nothing kept, the screens nobody demos, Save run as simulation", file: "tests/live.mjs", browser: true, vici: true },
+  { id: "report", what: "the report and its downloads: the PDF's footer on every page, the HTML file that loads nothing, the file for the Prototype Ideator, the tiles' figures, the Summary step, a live run's report, the file names", file: "tests/report.mjs", browser: true, ideator: true }
 ];
 
 const REQUIRE = process.argv.includes("--require-vici");
+const REQUIRE_IDEATOR = process.argv.includes("--require-ideator");
 const only = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 const unknown = only.filter((id) => !SUITES.some((s) => s.id === id));
 if (unknown.length) {
@@ -57,7 +61,7 @@ const annotate = (s, out) => {
 for (const s of chosen) {
   console.log(`\n=== ${s.id}: ${s.what} ===`);
   const started = Date.now();
-  const r = spawnSync(process.execPath, [path.join(APP_ROOT, s.file), ...(s.args || []), ...(s.vici && REQUIRE ? ["--require-vici"] : [])], { cwd: APP_ROOT, stdio: CI ? ["inherit", "pipe", "pipe"] : "inherit", env: process.env, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
+  const r = spawnSync(process.execPath, [path.join(APP_ROOT, s.file), ...(s.args || []), ...(s.vici && REQUIRE ? ["--require-vici"] : []), ...(s.ideator && REQUIRE_IDEATOR ? ["--require-ideator"] : [])], { cwd: APP_ROOT, stdio: CI ? ["inherit", "pipe", "pipe"] : "inherit", env: process.env, encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
   if (CI) {
     process.stdout.write(r.stdout || "");
     process.stderr.write(r.stderr || "");

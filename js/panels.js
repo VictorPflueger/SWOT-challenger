@@ -11,8 +11,8 @@ import { money, score, zoneName, countryName, date } from "./format.js";
 import { STEP, itemsAt, sameChoice } from "./simulation.js";
 import { renderFacts } from "./facts.js";
 import { factsFor } from "./scenario.js";
-import { SECTORS, kpiById } from "../data/kpis.js";
-import { riskMatrix, factorTable, ieMatrix, towsMatrix, issueNo, effectText } from "./matrices.js";
+import { SECTORS } from "../data/kpis.js";
+import { riskMatrix, factorTable, ieMatrix, towsMatrix, issueNo, effectText, kpiText } from "./matrices.js";
 import { itemsChallenged } from "./engine.js";
 import { liveStartStory, waitStory, stopStory, checkControls, checkCount, researchNote, liveSummaryExtras, liveEntry, yourTurnLive } from "./live_panels.js";
 
@@ -151,18 +151,6 @@ function issueCard(issue, ctx, { priced }) {
   return li;
 }
 
-/** A KPI effect as the Analyst estimated it: "Share of service revenue: −2 to −1 %". */
-function kpiText(k, lang) {
-  const lib = kpiById(k.id);
-  const name = lib ? lib.name[lang] : k.name;
-  const n = (x) => new Intl.NumberFormat(lang === "de" ? "de-DE" : "en-GB", { maximumFractionDigits: 2, signDisplay: "exceptZero" }).format(x).replace("-", "−");
-  const unit = k.unit === "€" ? "" : ` ${k.unit}`;
-  const range = k.unit === "€"
-    ? t("s.assess.kpi.range", { low: signedMoney(k.change_low, lang), high: signedMoney(k.change_high, lang), unit: "" })
-    : t("s.assess.kpi.range", { low: n(k.change_low), high: n(k.change_high), unit });
-  return `${name}: ${range}`;
-}
-const signedMoney = (x, lang) => (x < 0 ? "−" : x > 0 ? "+" : "") + money(Math.abs(x), lang);
 
 function challenge(ctx) {
   const { run, lang } = ctx;
@@ -269,6 +257,7 @@ function summary(ctx) {
     title: before === left ? t("s.sum.title.same", { stake: before }) : t("s.sum.title", { left, stake: before }),
     lead: t("s.sum.lead"),
     body: [
+      ctx.report ? ctx.report.card(ctx.handlers.openReport) : null,
       h("div", { class: "summary" },
         h("article", { class: "summary__text", "aria-labelledby": "sum-head" },
           h("p", { class: "summary__by" }, ai(t("s.sum.by"))),
@@ -291,14 +280,14 @@ function summary(ctx) {
                 h("div", {}, h("dt", {}, t("s.strat.owner.label")), h("dd", {}, x.owner)),
                 h("div", {}, h("dt", {}, t("s.strat.time.label")), h("dd", {}, x.time_to_impact))))))
             : h("p", { class: "chosen__none" }, t("s.sum.none")),
-          h("p", { class: "version-note" }, t("s.sum.report")),
-          ...(ctx.live ? liveSummaryExtras(ctx) : [h("div", { class: "sum-live" }, h("p", { class: "sum-live__q" }, t("s.sum.live.next")), liveEntry(ctx.handlers.enterLive, { sub: false }))])))
+          ...(ctx.live ? liveSummaryExtras(ctx) : [
+            h("div", { class: "sum-live" }, h("p", { class: "sum-live__q" }, t("s.sum.live.next")), liveEntry(ctx.handlers.enterLive, { sub: false })),
+            h("p", { class: "sum-more" },
+              h("button", { type: "button", class: "vc-button vc-button--secondary vc-button--sm", id: "btn-replay", on: { click: ctx.handlers.replay } }, icon("refresh"), t("p.replay")),
+              h("button", { type: "button", class: "vc-button vc-button--secondary vc-button--sm", id: "btn-next-company", on: { click: ctx.handlers.nextCompany } }, t("s.sum.cta", { company: ctx.nextCompany }), icon("chevron-right")))])))
     ],
-    bar: ctx.live
-      ? h("div", { class: "foot foot--end" }, h("button", { type: "button", class: "vc-button vc-button--secondary", id: "btn-sim-end", on: { click: ctx.handlers.leaveLive } }, icon("chevron-left"), t("p.live.leave")))
-      : h("div", { class: "foot foot--end" },
-        h("button", { type: "button", class: "vc-button vc-button--secondary", id: "btn-replay", on: { click: ctx.handlers.replay } }, icon("refresh"), t("p.replay")),
-        cta(t("s.sum.cta", { company: ctx.nextCompany }), ctx.handlers.nextCompany, false))
+    // The run's last action: the report, as PDF, HTML or the file for the Prototype Ideator.
+    bar: ctx.report ? yourTurn(t("p.your.turn"), t("rp.turn"), cta(t("rp.cta"), ctx.handlers.openReport, false)) : null
   };
 }
 

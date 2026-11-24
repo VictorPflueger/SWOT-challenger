@@ -217,7 +217,9 @@ export function stopStory(ctx) {
       h("div", { class: "vc-alert vc-alert--danger stop", role: "alert" }, icon("warning"),
         h("div", {}, h("p", { class: "stop__text" }, text), next ? h("p", { class: "stop__next" }, next) : null, h("p", { class: "stop__kept" }, t("x.done")))),
       details,
-      h("p", { class: "stop__spent" }, t("w.cost", { spent: euros(live.snap.spentEur, lang), cap: euros(live.snap.capEur, lang, 2) }))
+      h("p", { class: "stop__spent" }, t("w.cost", { spent: euros(live.snap.spentEur, lang), cap: euros(live.snap.capEur, lang, 2) })),
+      // What is done is in the downloads too (PLAN.md, 5.5): the report says on every page that the run stopped.
+      ctx.report ? h("p", { class: "stop__report" }, h("button", { type: "button", class: "vc-button vc-button--secondary vc-button--sm", id: "btn-report-done", on: { click: ctx.handlers.openReport } }, icon("download"), t("rp.stopped.cta"))) : null
     ],
     bar: h("div", { class: "foot foot--end" }, back, action ? h("div", { class: "turn__act" }, action, aiNotice()) : null)
   };

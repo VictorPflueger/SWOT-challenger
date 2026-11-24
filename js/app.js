@@ -15,7 +15,8 @@ import { getLang, setLang, onLang, t } from "./i18n/index.js";
 import { SCENARIOS } from "../data/scenarios/index.js";
 import { STEP, LAST_STEP, scenarioIdFrom, loadScenario, createRun, addressed, sameChoice } from "./simulation.js";
 import { figuresFor, factsFor } from "./scenario.js";
-import { createTiles } from "./tiles.js";
+import { createTiles, tileTexts } from "./tiles.js";
+import { createReportView } from "./report_view.js";
 import { gridNodes, legendNodes } from "./grid.js";
 import { storyFor } from "./panels.js";
 import { estimateRun } from "./estimate.js";
@@ -45,6 +46,7 @@ export async function start() {
     modeTag: $("mode-tag"), modeText: $("mode-text"), modeTip: $("tip-mode"), liveControls: $("live-controls"), pick: document.querySelector(".scenario-pick"), liveOpen: $("btn-live-bar")
   };
   const tiles = createTiles(document);
+  const reportView = createReportView({ dialog: $("report-dialog"), tools: $("report-tools"), body: $("report-body"), announce: (text) => announce(text), onSaved: () => live.markSaved() });
 
   const state = {
     id: scenarioIdFrom(params.get("scenario")),
@@ -178,6 +180,7 @@ export async function start() {
     },
     lightIssue: (id) => { state.litIssue = state.litIssue === id ? null : id; render(); },
     replay: () => replay(),
+    openReport: () => { pause(); reportView.open(); },
     nextCompany: () => {
       const i = SCENARIOS.findIndex((s) => s.id === state.id);
       openScenario(SCENARIOS[(i + 1) % SCENARIOS.length].id, 0);
@@ -213,11 +216,26 @@ export async function start() {
     const active = document.activeElement;
     const focusId = active && els.body.contains(active) && active.id ? active.id : active && els.bar.contains(active) && active.id ? active.id : null;
     const figures = scored ? { before: figuresFor(run, []), after: figuresFor(run, state.adopted || []) } : null;
+    const snap = liveNow?.snap;
+    const tileModel = liveNow
+      ? { lang, live: { figures, issues: run.issues.length > 0 || (snap && ["assess", "strategise", "summary"].includes(snap.step)), items: itemsOf(run), spentEur: snap?.spentEur ?? 0, capEur: snap?.capEur ?? null, model: snap?.settings.model ?? null, decided: !!state.adopted && scored, addressedCount: fixed.size, done: snap?.status === "done" } }
+      : { lang, loading: false, figures: { before: figures.before, after: figures.after }, decided: !!state.adopted, addressedCount: fixed.size, estimate: estimate() };
+    // The report exists from the Summary step on, and for a live run that stopped: what is done.
+    const reportLang = liveNow ? (liveNow.run?.rec.language || lang) : lang;
+    const report = state.step === STEP.summary || (liveNow && snap?.stop)
+      ? reportView.build({
+        run: reportLang === lang ? run : runIn(reportLang), lang: reportLang, mode: liveNow ? "live" : "simulation",
+        scenario: liveNow ? null : state.run.scenario, chosen: state.adopted || [],
+        tiles: tileTexts({ ...tileModel, lang: reportLang }), created: new Date(),
+        live: liveNow ? snap : null, estimateModel: liveNow ? null : estimate().model, printable: true
+      })
+      : null;
     const ctx = {
       run, lang, scenario: state.run.scenario, step: state.step, state, live: liveNow,
       figures, preview: scored ? figuresFor(run, [...state.selection]) : null,
       waits: waits(), play: { on: P.on, attention: state.attention }, litIssue: state.litIssue, open: state.open,
       nextCompany: SCENARIOS[(SCENARIOS.findIndex((s) => s.id === state.id) + 1) % SCENARIOS.length].name,
+      report: report ? reportView : null,
       handlers
     };
     const story = storyFor(state.step, ctx);
@@ -228,12 +246,7 @@ export async function start() {
     els.workspace.dataset.wide = story.wide ? "true" : "false";
     if (focusId) document.getElementById(focusId)?.focus({ preventScroll: true });
 
-    if (liveNow) {
-      const snap = liveNow.snap;
-      tiles.render({ lang, live: { figures, issues: run.issues.length > 0 || (snap && ["assess", "strategise", "summary"].includes(snap.step)), items: itemsOf(run), spentEur: snap?.spentEur ?? 0, capEur: snap?.capEur ?? null, model: snap?.settings.model ?? null, decided: !!state.adopted && scored, addressedCount: fixed.size, done: snap?.status === "done" } });
-    } else {
-      tiles.render({ lang, loading: false, figures: { before: figures.before, after: figures.after }, decided: !!state.adopted, addressedCount: fixed.size, estimate: estimate() });
-    }
+    tiles.render(tileModel);
     fillPlay(P.on && !waits() ? P.at / readMs() : 0);
     drawFoot();
     renderUpdates();
