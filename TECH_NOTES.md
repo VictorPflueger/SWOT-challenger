@@ -187,7 +187,7 @@ The run is a recording in the scenario format, in its one language: the Recordin
 
 ### 11.11 Where 0.3.0 differs from PLAN.md
 
-- The Vici pattern came first, as planned: the live-run dialog, merged into ViciDesign on 24 November 2026 (pull request 36). `vici/` holds Vici's main at `bf11426`.
+- The Vici pattern came first, as planned: the live-run dialog, merged into ViciDesign on 24 November 2026 (pull request 36). `vici/` holds Vici's main at `8940e41`, which adds the Prototype Ideator's fixes from the same day: a callout keeps its text, surfaces and actions in its own ink in both themes, and tables set tabular figures in number cells only. The tool already marks its number cells `vc-num`, and its Your turn callout drops the accent override it carried, since Vici's callout now sets the same values.
 - Run it live stands in the step bar without the AI notice: at 1280 px the bar has no room for the notice's words (measured), and the button opens a form, not a run. The notice stands beside every control that sends a request: Start the live run in the dialog, as Vici's pattern has it, and the live run's Start the agents, Challenge this SWOT, Adopt these strategies and Try this step again. On Start and Summary of a simulation, Run it live appears again with the notice beside it.
 - On laptop widths (up to 1440 px) Play, Back and Next show their icons only, so the step bar holds Run it live; their names stay for screen readers.
 - Play is hidden in a live run: the agents set the pace.
