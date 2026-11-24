@@ -1,6 +1,6 @@
 # Tests
 
-The app needs none of this: it is static files. The tests use Node.js 22 and, for the browser suites, Playwright with Chromium. No test calls the real Claude API.
+The app needs none of this: it is static files. The tests use Node.js 22 and, for the browser suites, Playwright with Chromium. No test calls the real Claude API: the live run is tested against a scripted stand-in (`tests/lib/fake-claude.mjs`) that answers with the scenarios' recorded answers and with planted faults.
 
 ## Setup
 
@@ -36,7 +36,8 @@ Without a ViciDesign checkout, the suites that need one say so and pass, unless 
 | `kpis` | The thirteen sectors, 8 to 12 KPIs each and ten in general, both languages, no benchmark value |
 | `scenarios` | The three scenarios pass every scenario rule in both languages, along the recorded choice and three others; the rules catch each defect the brief lists, planted in a copy of S2 |
 | `audit` | The fact audit lets placeholders, a standard's number, an evidence year, legal references, ISO dates and ids through and refuses every other figure, in golden texts of both languages; every summary's placeholders render, matching the figures worked out by hand |
-| `unit` | The session-cost estimate, recounted with the prices written out; its display in both languages; the Method dialog's worked example against the golden case SW1; what each step shows and which items a choice addresses |
+| `unit` | The session-cost estimate, recounted with the prices written out; its display in both languages; the Method dialog's worked example against the golden case SW1; what each step shows and which items a choice addresses; the shared client's retries (twice, after 1.5 and 4 seconds or retry-after up to 20 seconds, never for credit, a spend limit, a key or a model); each request's worst case, the lowering, the stop and the refusal above 100,000 tokens on Haiku 5.5; the meter within 1e-9; the private-data scan on its samples; every API error in words and one next step in both languages |
+| `guards` | Each refusal of the live guards, planted in a valid answer of Arvento Drives, returns its own message; the recorded answers pass |
 | `i18n` | The same keys and placeholders in both languages, every key used, no sentence typed into the code |
 | `policy` | The exact policy, nothing loaded from elsewhere, nothing inline, storage only where allowed; Vici's `policyProblems` and `storageProblems` agree |
 | `hygiene` | No client, contact or meeting named in any published file |
@@ -45,8 +46,9 @@ Without a ViciDesign checkout, the suites that need one say so and pass, unless 
 | `vici` | Vici's guide, byline, writing, AI notice and record-id checks on the page as served and rendered, and Vici's guide render check |
 | `smoke` | In Chromium: a first visit in English, the switch without a reload, one guide per language, the theme from the first paint, nothing kept, as Vici's `storedKeyProblems` confirms |
 | `presenter` | In Chromium: every scenario from Start to Summary in both languages, by click, key and address; Play's timing on a fake clock; the tiles answering first and after the decision; every item's state on every step (Vici's `frameworkProblems`); the risk matrix (`riskMatrixProblems`); the tables behind each matrix; the Method dialog |
-| `layout` | In Chromium at 1920 × 1080 and 1280 × 720, both themes and languages, every step of every scenario: nothing wider than the window, no text cut, no table scrolling sideways, every SWOT item in view, the bar in the window, every strategy card in full, a steady header |
+| `layout` | In Chromium at 1920 × 1080 and 1280 × 720, both themes and languages, every step of every scenario: nothing wider than the window, no text cut, no table scrolling sideways, every SWOT item in view, the bar in the window, every strategy card in full, a steady header; and the live screens: the Start form, the dialog whole at its first opening (no scrolling, the estimate in view) and its start button and the AI notice in view, the wait, the check, an error, Run it live in the step bar |
 | `hexagon` | Nothing round, in the files and on the rendered page in both themes |
+| `live` | In Chromium against the stand-in: every request's model, effort, thinking, schema and headers for each setting; one repair, then a stop; Abort; the cap and the meter; each API error in words, with the retries of brief 5.8; the dialog (Vici's `liveDialogProblems`, the box, the frame, the private-data warning); research with pause_turn, refused URLs and web search switched off; the person's check of the AI's items; nothing kept and the key nowhere; the screens nobody demos; Save run as simulation, accepted by the scenario rules and played back. `node tests/live.mjs ac10` runs one group |
 
 Every suite first proves on planted errors that its checks can fail.
 

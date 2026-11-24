@@ -29,8 +29,8 @@
 
     <div class="header-actions">
       <span class="vc-tooltip-anchor">
-        <span class="vc-tag vc-tag--lg mode-tag" id="mode-tag" data-mode="simulation" tabindex="0" aria-describedby="tip-mode"><span data-i18n="p.mode.simulation">SIMULATION</span></span>
-        <span class="vc-tooltip vc-tooltip--bottom" role="tooltip" id="tip-mode" data-i18n="p.mode.tip">A recorded run of a fictional company plays here, with no key and nothing sent anywhere. Live runs with your own key come with version 0.3.0.</span>
+        <span class="vc-tag vc-tag--lg mode-tag" id="mode-tag" data-mode="simulation" tabindex="0" aria-describedby="tip-mode"><span id="mode-text">SIMULATION</span></span>
+        <span class="vc-tooltip vc-tooltip--bottom" role="tooltip" id="tip-mode">A recorded run of a fictional company plays here, with no key and nothing sent anywhere. Run it live puts the agents to work on your own company, with your own key.</span>
       </span>
       <a class="updates" id="updates" href="https://github.com/VictorPflueger/SWOT-challenger/blob/main/DATA_SOURCES.md" target="_blank" rel="noopener" hidden><span data-i18n="p.updates">Check for updates</span></a>
       <!-- One guide per language, each with its own button; js/lang.js shows the page's. -->
@@ -100,11 +100,21 @@
   <!-- The steps of the run (Vici's "Presenting step by step"): Play, Back, six steps, Next and the
        company. js/app.js fills the steps and keeps them in the page's language. -->
   <nav class="stepbar" aria-label="Steps" data-i18n-attr="aria-label:p.steps">
-    <button type="button" class="vc-button vc-button--secondary play" id="btn-play" data-state="play"><span class="vc-icon vc-icon--play" aria-hidden="true"></span><span id="play-text">Play</span></button>
-    <button type="button" class="vc-button vc-button--ghost stepbar-back" id="btn-back"><span class="vc-icon vc-icon--chevron-left" aria-hidden="true"></span><span data-i18n="p.back">Back</span></button>
+    <button type="button" class="vc-button vc-button--secondary play" id="btn-play" data-state="play"><span class="vc-icon vc-icon--play" aria-hidden="true"></span><span class="stepbar-word" id="play-text">Play</span></button>
+    <button type="button" class="vc-button vc-button--ghost stepbar-back" id="btn-back"><span class="vc-icon vc-icon--chevron-left" aria-hidden="true"></span><span class="stepbar-word" data-i18n="p.back">Back</span></button>
     <ol class="vc-stepper steps" id="steps"></ol>
-    <button type="button" class="vc-button vc-button--secondary stepbar-next" id="btn-next"><span data-i18n="p.next">Next</span><span class="vc-icon vc-icon--chevron-right" aria-hidden="true"></span></button>
+    <button type="button" class="vc-button vc-button--secondary stepbar-next" id="btn-next"><span class="stepbar-word" data-i18n="p.next">Next</span><span class="vc-icon vc-icon--chevron-right" aria-hidden="true"></span></button>
     <label class="scenario-pick"><span class="scenario-pick__label"><span class="vc-icon vc-icon--info" aria-hidden="true"></span><span data-i18n="p.scenario">Fictional company</span></span><select class="vc-select vc-select--sm" id="scenario"></select></label>
+    <!-- Run it live opens the Start form; the run itself starts in the dialog, beside the AI notice. -->
+    <button type="button" class="vc-button vc-button--secondary live-open" id="btn-live-bar"><span class="vc-icon vc-icon--zap" aria-hidden="true"></span><span id="live-open-text">Run it live</span></button>
+    <!-- A live run: back to the simulation (the run stays in memory) and Clear everything (key, form, run). -->
+    <div class="live-controls" id="live-controls" hidden>
+      <button type="button" class="vc-button vc-button--secondary" id="btn-sim"><span class="vc-icon vc-icon--chevron-left" aria-hidden="true"></span><span data-i18n="p.live.leave">Back to the simulation</span></button>
+      <span class="vc-tooltip-anchor">
+        <button type="button" class="vc-icon-button" id="btn-clear" aria-labelledby="tip-clear"><span class="vc-icon vc-icon--trash" aria-hidden="true"></span></button>
+        <span class="vc-tooltip vc-tooltip--bottom" role="tooltip" id="tip-clear"><span data-i18n="p.live.clear">Clear everything</span>: <span data-i18n="p.live.clear.tip">Forgets the key, the form and the run. The page stored nothing else.</span></span>
+      </span>
+    </div>
   </nav>
   <p class="vc-visually-hidden" id="announce" aria-live="polite"></p>
 
@@ -130,6 +140,80 @@
       </div>
     </section>
   </main>
+
+  <!-- Run it live: Vici's live-run dialog (components/overlays.html#live-run). The key goes into one
+       variable of js/keystore.js and nowhere else; js/live.js runs the dialog. -->
+  <dialog class="vc-dialog vc-live" id="live-dialog" aria-labelledby="live-title" data-vc-live>
+    <header class="vc-dialog__header">
+      <h2 class="vc-dialog__title" id="live-title" data-i18n="d.title">Run it live</h2>
+      <button type="button" class="vc-icon-button" data-vc-close aria-label="Close" data-i18n-attr="aria-label:p.close"><span class="vc-icon vc-icon--close" aria-hidden="true"></span></button>
+    </header>
+    <div class="vc-dialog__body vc-live__body">
+      <p class="vc-alert vc-alert--danger live-frame" id="live-frame" hidden data-i18n="d.frame">This page sits inside another site's frame. Open it on its own to run it live.</p>
+      <section class="vc-live__part vc-live__key">
+        <label class="vc-label" for="live-key" data-i18n="d.key">Your API key</label>
+        <div class="vc-live__key-row">
+          <input class="vc-input" id="live-key" type="password" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" placeholder="sk-ant-…" aria-describedby="live-key-note live-key-status" data-i18n-attr="placeholder:d.key.placeholder">
+          <button type="button" class="vc-icon-button" id="live-key-show" aria-controls="live-key" aria-pressed="false" aria-label="Show key" data-i18n-attr="aria-label:d.key.show"><span class="vc-icon vc-icon--eye" aria-hidden="true"></span></button>
+        </div>
+        <p class="vc-help" id="live-key-note"><span data-i18n="d.key.note">Needs a key from the Claude Console. It stays in this tab's memory and is gone when you close or reload it.</span> <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noopener"><span data-i18n="d.key.get">Get a key</span><span class="vc-visually-hidden" data-i18n="p.new.tab"> (opens in a new tab)</span></a></p>
+        <p class="vc-help live-key-advice" data-i18n="d.key.advice">Best in a workspace of its own with a monthly spend limit. A Claude.ai plan does not pay for API use; Max, Ultra and Team plans include monthly API credits.</p>
+        <p class="vc-live__current" id="live-key-current" hidden><span data-i18n="d.key.current">Key in memory:</span> <span class="vc-live__masked" id="live-key-masked"></span> <button type="button" class="vc-button vc-button--ghost vc-button--sm vc-live__forget" id="live-key-forget" data-i18n="d.key.forget">Forget key</button></p>
+        <p class="live-key-status" id="live-key-status" role="status"></p>
+      </section>
+      <fieldset class="vc-live__part vc-live__setting">
+        <legend class="vc-label" data-i18n="d.setting">Setting</legend>
+        <div class="vc-segmented" role="radiogroup" aria-label="Setting" data-i18n-attr="aria-label:d.setting">
+          <label><input type="radio" name="live-preset" value="fast"><span data-i18n="d.preset.fast">Fast</span></label>
+          <label><input type="radio" name="live-preset" value="balanced" checked><span data-i18n="d.preset.balanced">Balanced</span></label>
+          <label><input type="radio" name="live-preset" value="thorough"><span data-i18n="d.preset.thorough">Thorough</span></label>
+        </div>
+        <p class="vc-help" data-i18n="d.setting.help">Balanced suits most runs; Thorough costs about twenty times as much.</p>
+      </fieldset>
+      <div class="vc-live__part vc-live__research">
+        <label class="vc-switch"><input type="checkbox" role="switch" id="live-research"> <span data-i18n="d.research">Look up recent news first</span></label>
+        <p class="vc-help" id="live-research-help">About €0.05 more for five web searches; the models know the world only up to June 2026.</p>
+      </div>
+      <details class="vc-live__part vc-live__advanced" id="live-advanced">
+        <summary data-i18n="d.advanced">Advanced</summary>
+        <div>
+          <div class="vc-field"><label class="vc-label" for="live-model" data-i18n="d.model">Model</label><select class="vc-select" id="live-model"><option value="" data-i18n="d.model.setting">The setting's model</option><option value="claude-haiku-5-5">Haiku 5.5</option><option value="claude-sonnet-5-5">Sonnet 5.5</option></select></div>
+          <div class="vc-field"><label class="vc-label" for="live-effort" data-i18n="d.effort">Effort</label><select class="vc-select" id="live-effort"><option value="" data-i18n="d.effort.setting">The setting's effort</option><option value="low" data-i18n="d.effort.low">Low</option><option value="medium" data-i18n="d.effort.medium">Medium</option><option value="high" data-i18n="d.effort.high">High</option></select></div>
+        </div>
+      </details>
+      <div class="vc-live__part vc-live__cap">
+        <label class="vc-label" for="live-cap" data-i18n="d.cap">Budget cap for this run</label>
+        <div class="vc-slider-field">
+          <input class="vc-slider" id="live-cap" type="range" min="0.05" max="3" step="0.05" value="0.5" aria-describedby="live-cap-help">
+          <output for="live-cap" id="live-cap-out" data-vc-currency="EUR">€0.50</output>
+        </div>
+        <p class="vc-help" id="live-cap-help" data-i18n="d.cap.help">The run stops before any request that could pass it.</p>
+      </div>
+      <label class="vc-checkbox vc-live__ack"><input type="checkbox" id="live-ack"> <span data-i18n="d.ack">I will enter public information only: nothing confidential, personal or otherwise protected.</span></label>
+      <div class="vc-alert vc-alert--warning vc-live__warning" id="live-warning" role="alert" hidden>
+        <span class="vc-icon vc-icon--warning" aria-hidden="true"></span>
+        <div><span data-i18n="d.warn.head">Usually private, found in what you entered:</span><ul id="live-warning-list"></ul><span data-i18n="d.warn.tail">Remove it, or start the run if it is public.</span> <button type="button" class="vc-button vc-button--ghost vc-button--sm" id="live-warning-edit" data-i18n="d.warn.edit">Edit the SWOT</button></div>
+      </div>
+      <p class="vc-live__estimate" id="live-estimate" aria-live="polite">Estimate with these settings: about €0.01 and 1 to 2 minutes.</p>
+    </div>
+    <footer class="vc-dialog__footer vc-live__footer">
+      <span class="vc-tag vc-tag--feature ai-notice"><span class="vc-icon vc-icon--sparkle" aria-hidden="true"></span><span data-i18n="p.ai">You are interacting with an AI system</span></span>
+      <p class="live-why" id="live-why" aria-live="polite"></p>
+      <button type="button" class="vc-button vc-live__start" id="live-start" disabled aria-describedby="live-why" data-i18n="d.start">Start the live run</button>
+    </footer>
+  </dialog>
+
+  <!-- Clear everything asks first while there is something to lose: nothing was stored to bring it back. -->
+  <dialog class="vc-dialog vc-dialog--sm clear-dialog" id="clear-dialog" aria-labelledby="clear-title" aria-describedby="clear-text">
+    <header class="vc-dialog__header">
+      <h2 class="vc-dialog__title" id="clear-title" data-i18n="p.live.clear">Clear everything</h2>
+    </header>
+    <div class="vc-dialog__body"><p id="clear-text" data-i18n="p.live.clear.confirm">Clear the key, the form and the run? Nothing was stored, so they cannot come back.</p></div>
+    <footer class="vc-dialog__footer">
+      <button type="button" class="vc-button vc-button--secondary" id="clear-cancel" data-i18n="p.live.clear.cancel">Keep them</button>
+      <button type="button" class="vc-button vc-button--danger" id="clear-confirm" data-i18n="p.live.clear">Clear everything</button>
+    </footer>
+  </dialog>
 
   <!-- Method: the rules behind every figure, drawn by js/method.js in the page's language. -->
   <dialog class="vc-dialog vc-dialog--lg method" id="method" aria-labelledby="method-title">

@@ -1,7 +1,5 @@
-// Usage into money: the API's `usage` objects priced at the list prices of js/config.js and converted at
-// the fixed rate (brief 5.5). Pure functions, so the session-cost estimate now, the live cost meter from
-// 0.3.0 and the tests use the same maths. Taken from the Sovereignty Assessment 2.0.0, where the sister
-// prototypes share it.
+// Cost model for live runs: converts the API's `usage` objects into USD and EUR with the prices
+// verified in TECH_NOTES §1. Pure functions, so the cost meter and the tests use the same maths.
 
 import { MODELS, FX_USD_EUR, ANTHROPIC } from "./config.js";
 
@@ -16,10 +14,9 @@ export function normalizeUsage(u = {}) {
   };
 }
 
-/** USD cost of one response. Haiku switches to its long-prompt prices above 100,000 prompt tokens. */
+/** USD cost of one response. Haiku switches to its long-prompt prices above 100k prompt tokens. */
 export function usageCostUsd(modelId, usage) {
-  const model = MODELS.find((m) => m.id === modelId);
-  if (!model) throw new RangeError(`no price for the model ${modelId}`);
+  const model = MODELS.find((m) => m.id === modelId) || MODELS[0];
   const u = normalizeUsage(usage);
   const promptTokens = u.input_tokens + u.cache_creation_input_tokens + u.cache_read_input_tokens;
   const long = model.price.longPrompt && promptTokens > model.price.longPrompt.thresholdTokens;
@@ -34,5 +31,25 @@ export function usageCostUsd(modelId, usage) {
   );
 }
 
-/** Euros from dollars at the fixed rate. */
-export const toEur = (usd) => usd * FX_USD_EUR;
+/** Running totals for one run. */
+export function createCostTracker(modelId) {
+  const totals = {
+    usd: 0, input_tokens: 0, output_tokens: 0, cache_write_tokens: 0, cache_read_tokens: 0, web_searches: 0, requests: 0
+  };
+  return {
+    add(usage) {
+      const u = normalizeUsage(usage);
+      totals.usd += usageCostUsd(modelId, usage);
+      totals.input_tokens += u.input_tokens;
+      totals.output_tokens += u.output_tokens;
+      totals.cache_write_tokens += u.cache_creation_input_tokens;
+      totals.cache_read_tokens += u.cache_read_input_tokens;
+      totals.web_searches += u.web_search_requests;
+      totals.requests += 1;
+      return this.snapshot();
+    },
+    snapshot() {
+      return { ...totals, eur: totals.usd * FX_USD_EUR, simulated: false, model: modelId };
+    }
+  };
+}

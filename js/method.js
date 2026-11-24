@@ -77,7 +77,7 @@ export function methodNodes({ sector, lang }) {
         h("tbody", {}, kpis.map((k) => h("tr", {}, h("th", { scope: "row" }, k.name[lang]), h("td", {}, k.unit), h("td", {}, t(`m.kpis.better.${k.better}`)), h("td", {}, k.definition[lang]))))))),
     section("money", head("money", "m.money.h"),
       p("m.money.p", { date: date(PRICES_READ_ON, lang), rate: fixed(FX_USD_EUR, 3, lang), ecb: fixed(ECB_REFERENCE.usdPerEur, 4, lang), ecbDate: date(ECB_REFERENCE.date, lang) }),
-      p("m.money.estimate", { chars: ESTIMATE.charsPerToken, system: new Intl.NumberFormat(lang === "de" ? "de-DE" : "en-GB").format(ESTIMATE.systemTokens), thinking: ESTIMATE.thinkingTokens, model: model.label }),
+      p("m.money.estimate", { chars: ESTIMATE.charsPerToken, thinking: ESTIMATE.thinkingTokens, model: model.label }),
       source("m.src.prices", "https://platform.claude.com/docs/en/about-claude/pricing")),
     section("not", head("not", "m.not.h"), p("m.not.p"))
   ];

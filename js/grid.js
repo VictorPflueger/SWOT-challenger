@@ -13,9 +13,10 @@ import { t } from "./i18n/index.js";
 import { h, icon } from "./dom.js";
 import { weight as fmtWeight } from "./format.js";
 import { STEP, itemsAt, sourceOf, issuesOf, issueAdding, factorOf } from "./simulation.js";
+import { liveGridNodes } from "./live_panels.js";
 
 const LETTER = { strengths: "S", weaknesses: "W", opportunities: "O", threats: "T" };
-const MARK = { ai: "sparkle", added: "plus", challenged: "warning", addressed: "check" };
+const MARK = { ai: "sparkle", added: "plus", challenged: "warning", addressed: "check", removed: "minus" };
 
 /** A translated sentence with nodes in its placeholders, such as a struck-through old rating. */
 export function tNodes(key, parts) {
@@ -32,11 +33,12 @@ export function tNodes(key, parts) {
 }
 
 /** What a step shows of one item: its source, its status and the words for both. */
-export function itemState(run, item, { step, addressed }) {
+export function itemState(run, item, { step, addressed, check }) {
   const source = sourceOf(item);
   const issues = step >= STEP.challenge ? issuesOf(run, item.id) : [];
   const fix = step >= STEP.summary && addressed ? addressed.get(item.id) || null : null;
-  const status = fix ? "addressed" : issues.length ? "challenged" : "";
+  const removed = !!check?.removed.has(item.id);
+  const status = removed ? "removed" : fix ? "addressed" : issues.length ? "challenged" : "";
   const faults = [...new Set(issues.map((i) => i.type))];
   return { source, status, issues, faults, fix };
 }
@@ -48,11 +50,14 @@ function itemNode(run, item, view) {
   const words = [];
   if (st.source === "entered") words.push(h("span", { class: "vc-item__state vc-visually-hidden" }, t("p.item.entered")));
   else words.push(h("span", { class: "vc-tag vc-tag--sm vc-item__state vc-item__state--source" }, t(`p.item.${st.source}`)));
-  if (st.status === "addressed") words.push(h("span", { class: "vc-tag vc-tag--sm vc-item__state vc-item__state--status" }, t("p.item.addressed")));
+  if (st.status === "removed") words.push(h("span", { class: "vc-tag vc-tag--sm vc-item__state vc-item__state--status" }, t("p.item.removed")));
+  else if (st.status === "addressed") words.push(h("span", { class: "vc-tag vc-tag--sm vc-item__state vc-item__state--status" }, t("p.item.addressed")));
   else for (const type of st.faults) words.push(h("span", { class: "vc-tag vc-tag--sm vc-item__state vc-item__state--status" }, t(`p.type.${type}`)));
 
   const body = [];
-  if (st.source === "entered") body.push(h("p", {}, t("p.item.by.team")));
+  const edited = view.check?.edited.get(item.id);
+  if (st.source === "entered") body.push(h("p", {}, t(view.liveRun ? "p.item.by.you" : "p.item.by.team")));
+  if (item.edited || edited) body.push(h("p", {}, t("p.item.edited", { text: item.original || item.text })));
   if (item.basis) body.push(h("p", { class: "ai-text" }, t("p.item.basis", { text: item.basis })));
   if (item.confidence) body.push(h("p", { class: "ai-text" }, t("p.item.confidence", { level: t(`p.conf.${item.confidence}`) })));
   if (st.source === "added") {
@@ -77,7 +82,7 @@ function itemNode(run, item, view) {
   },
   h("summary", { class: "vc-item__summary" },
     h("span", { class: "vc-item__mark", "aria-hidden": "true" }, mark ? icon(mark) : null),
-    h("span", { class: "vc-item__text" }, item.text),
+    h("span", { class: "vc-item__text" }, edited ?? item.text),
     h("span", { class: "vc-item__states" }, words)),
   h("div", { class: "vc-item__body" }, body));
   if (view.lit?.has(item.id)) details.setAttribute("aria-current", "true");
@@ -91,6 +96,7 @@ function itemNode(run, item, view) {
  */
 export function gridNodes(view) {
   const { run, step } = view;
+  if (view.live && view.live.stepState(STEP.start) === "form" && step === STEP.start) return liveGridNodes(view);
   const shown = itemsAt(run, step);
   const areas = QUADRANTS.map(({ id: q }) => {
     const items = shown.filter((it) => it.quadrant === q);
@@ -100,8 +106,8 @@ export function gridNodes(view) {
         h("p", { class: "vc-framework__question" }, t(`q.${q}.question`))),
       items.length
         ? h("ul", { class: "vc-framework__items" }, items.map((it) => itemNode(run, it, view)))
-        : h("p", { class: "vc-framework__empty" }, t("p.empty")),
-      step === STEP.start ? h("p", { class: "quad-fault" }, t(`q.${q}.fault`)) : null);
+        : h("p", { class: "vc-framework__empty" }, t(view.liveRun ? "q.live.empty" : "p.empty")),
+      step === STEP.start && !view.liveRun ? h("p", { class: "quad-fault" }, t(`q.${q}.fault`)) : null);
   });
   // The row labels carry a short form too, for the side of the grid on a laptop screen.
   const axes = [
@@ -121,7 +127,7 @@ export function legendNodes(view) {
     marks.add(st.source);
     if (st.status) marks.add(st.status);
   }
-  const order = ["entered", "ai", "added", "challenged", "addressed"].filter((m) => marks.has(m));
+  const order = ["entered", "ai", "added", "challenged", "addressed", "removed"].filter((m) => marks.has(m));
   return h("ul", { class: "vc-framework__legend", "aria-label": t("p.legend") }, order.map((m) =>
     h("li", { dataset: { mark: m } }, h("span", { class: "vc-item__mark", "aria-hidden": "true" }, MARK[m] ? icon(MARK[m]) : null), t(`p.legend.${m}`))));
 }

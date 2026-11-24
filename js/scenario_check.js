@@ -5,16 +5,20 @@
 // DATA_SOURCES.md; on anything shaped like a key; on a thinking block. It also holds the guards of brief
 // 6.7 and plays the run along the recorded choice and the other choices given, so any choice gives
 // figures that hold together. Pure: the caller hands in DATA_SOURCES.md's text and the reference figures.
+// A live recording ("Save run as simulation") is checked in its one language under the rules a live run
+// obeys: its contract, the ids, the live guards, the fact audit of the Writer's text and the figures. The
+// rules for an authored scenario that a live run cannot meet wait for its curation: the second language,
+// sources listed in DATA_SOURCES.md, weights that add up to exactly 1 and no figures in any agent's prose.
 
 import { validate, describeErrors } from "./schema.js";
 import { SCHEMAS, REQUESTS, STRATEGY_KINDS } from "../schemas/swot.js";
 import { KPIS } from "../data/kpis.js";
-import { assemble, figuresFor, quadrantOf, sideOf } from "./scenario.js";
+import { assemble, figuresFor, quadrantOf, sideOf, languagesOf } from "./scenario.js";
 import { auditText, factKeysIn, FACT_KEYS } from "./facts.js";
 import { issueExpected, expected, round9 } from "./risk.js";
 import { REFUSE_TOLERANCE, RESCALE_TOLERANCE } from "./engine.js";
+import { answerProblems } from "./guards.js";
 
-const LANGS = ["en", "de"];
 const STEPS = ["complete", "challenge", "assess", "strategise", "summary"];
 const KEY_SHAPE = /sk-ant-[A-Za-z0-9_-]{8,}|x-api-key/i;
 const KPI_IDS = new Set(KPIS.map((k) => k.id));
@@ -50,14 +54,18 @@ export function scenarioProblems(scenario, { dataSources = "", reference = null,
   // Keys and thinking blocks, anywhere in the file.
   const json = JSON.stringify(scenario);
   if (KEY_SHAPE.test(json)) out.push(where("holds something shaped like an API key"));
-  if (/"(thinking|redacted_thinking|signature)"\s*:/.test(json) || /"type"\s*:\s*"(thinking|redacted_thinking)"/.test(json)) out.push(where("holds a thinking block"));
+  // A run's audit names its thinking setting ("disabled" or "adaptive"); any other thinking field is a block.
+  if (/"(redacted_thinking|signature)"\s*:/.test(json) || /"thinking"\s*:\s*(?!"(?:disabled|adaptive)")/.test(json) || /"type"\s*:\s*"(thinking|redacted_thinking)"/.test(json)) out.push(where("holds a thinking block"));
+  const live = scenario?.source === "live";
+  const LANGS = live ? [scenario.language].filter((l) => l === "en" || l === "de") : ["en", "de"];
 
   // The contract.
-  const v = validate(scenario, SCHEMAS.Scenario, SCHEMAS);
-  if (!v.valid) { out.push(where(`breaks the Scenario contract: ${describeErrors(v.errors)}`)); return out; }
+  const contract = live ? "Recording" : "Scenario";
+  const v = validate(scenario, SCHEMAS[contract], SCHEMAS);
+  if (!v.valid) { out.push(where(`breaks the ${contract} contract: ${describeErrors(v.errors)}`)); return out; }
   if (scenario.as_of > today) out.push(where(`is dated ${scenario.as_of}, after today`));
 
-  // Both languages, every agent's answer valid against its schema.
+  // Every language, every agent's answer valid against its schema.
   for (const lang of LANGS) {
     const a = scenario.answers[lang];
     if (!a) { out.push(where(`has no answers in ${lang}`)); continue; }
@@ -71,7 +79,7 @@ export function scenarioProblems(scenario, { dataSources = "", reference = null,
   if (out.length) return out;
 
   // The two languages: the same structure, numbers, ids and choices; the same placeholders in each text.
-  const [en, de] = LANGS.map((l) => JSON.stringify(skeleton(scenario.answers[l])));
+  const [en, de] = live ? ["", ""] : LANGS.map((l) => JSON.stringify(skeleton(scenario.answers[l])));
   if (en !== de) {
     const se = strings(scenario.answers.en);
     const sd = strings(scenario.answers.de);
@@ -87,7 +95,7 @@ export function scenarioProblems(scenario, { dataSources = "", reference = null,
   // Ids, the guards of brief 6.7 and the rules of brief 6.2, in each language's assembly.
   let runs;
   try { runs = Object.fromEntries(LANGS.map((l) => [l, assemble(scenario, l)])); } catch (e) { out.push(where(`cannot be assembled: ${e.message}`)); return out; }
-  const run = runs.en;
+  const run = runs[LANGS[0]];
   const ids = new Set(run.items.map((i) => i.id));
   const before = run.items.filter((i) => !i.added);
   const missing = (id) => !ids.has(id);
@@ -97,8 +105,9 @@ export function scenarioProblems(scenario, { dataSources = "", reference = null,
   for (const [q, list] of Object.entries(scenario.entered)) for (const it of list) check(quadrantOf(it.id) === q, `the team's item ${it.id} sits in ${q}`);
   check(entered.size === Object.values(scenario.entered).flat().length, "the team's items repeat an id");
   for (const q of ["strengths", "weaknesses", "opportunities", "threats"]) {
-    const n = before.filter((i) => i.quadrant === q).length;
-    const ai = run.items.filter((i) => i.quadrant === q && i.source === "ai" && !i.added).length;
+    // The person's check may remove AI items in a live run; the Completer filled the quadrant before it.
+    const n = before.filter((i) => i.quadrant === q).length + run.removed.filter((i) => i.quadrant === q).length;
+    const ai = run.items.filter((i) => i.quadrant === q && i.source === "ai" && !i.added).length + run.removed.filter((i) => i.quadrant === q).length;
     check(n >= 3, `${q} holds ${n} items after the Completer; it fills every quadrant to three`);
     check(ai <= 4, `the Completer adds ${ai} items to ${q}; at most four`);
     check(run.items.filter((i) => i.quadrant === q).length <= 8, `${q} holds more than eight items`);
@@ -151,7 +160,7 @@ export function scenarioProblems(scenario, { dataSources = "", reference = null,
   for (const side of ["internal", "external"]) {
     const sum = round9(run.factors.filter((f) => sideOf(f.id) === side).reduce((s, f) => s + f.weight, 0));
     check(Math.abs(sum - 1) <= REFUSE_TOLERANCE, `the ${side} weights add up to ${sum}; more than ${REFUSE_TOLERANCE} from 1 is refused`);
-    check(Math.abs(sum - 1) <= RESCALE_TOLERANCE, `the ${side} weights add up to ${sum}; an authored scenario adds up to 1`);
+    if (!live) check(Math.abs(sum - 1) <= RESCALE_TOLERANCE, `the ${side} weights add up to ${sum}; an authored scenario adds up to 1`);
   }
 
   // Strategies: type, kind, items, issue, ratings, residual or upside.
@@ -184,21 +193,42 @@ export function scenarioProblems(scenario, { dataSources = "", reference = null,
   }
   for (const id of scenario.recorded_choice) check(sIds.includes(id), `the recorded choice names ${id}, which does not exist`);
 
-  // The fact audit on every text an agent wrote, in both languages.
+  // The live pipeline's guards (js/guards.js) on every answer, in both languages: a recorded run obeys the
+  // same rules as a live one, so it replays through the live checks and the stand-in of tests/live.mjs.
+  for (const lang of LANGS) {
+    const r = runs[lang];
+    const a = scenario.answers[lang];
+    const urls = scenario.sources.map((x) => x.url);
+    const ctx = {
+      complete: { entered: r.items.filter((i) => i.source === "user"), sector: scenario.company.sector },
+      challenge: { items: r.items.filter((i) => !i.added), urls },
+      assess: { items: r.items, issues: r.issues, sector: r.sector },
+      strategise: { items: r.items, issues: r.issues, factors: r.factors.map((f) => ({ item: f.id, rating: f.rating })) },
+      summary: { facts: new Set([...FACT_KEYS, ...r.issues.map((i) => `issue.${i.id}.expected`)]), evidence: { titles: r.issues.flatMap((i) => i.evidence.map((e) => e.title)), urls } }
+    };
+    for (const step of STEPS) {
+      if (live && step === "summary" && scenario.run?.summary_unchecked) continue;
+      for (const p of answerProblems(step, a[step], ctx[step])) out.push(where(`its ${step} answer in ${lang} fails the live guard: ${p}`));
+    }
+  }
+
+  // The fact audit on every text an agent wrote, in every language; in a live recording on the Writer's
+  // text, as the live guard has it, unless the run showed that text as unchecked.
   for (const lang of LANGS) {
     const r = runs[lang];
     const known = new Set([...FACT_KEYS, ...r.issues.map((i) => `issue.${i.id}.expected`)]);
     const evidence = { titles: r.issues.flatMap((i) => i.evidence.map((e) => e.title)), urls: scenario.sources.map((s) => s.url) };
     for (const s of strings(scenario.answers[lang])) {
       if (CODE_FIELD.test(s.path) || /(^|\.)evidence\[\d+\]\.title$/.test(s.path)) continue;
+      if (live && (!s.path.startsWith("summary") || scenario.run?.summary_unchecked)) continue;
       const a = auditText(s.text, { facts: known, evidence });
       if (!a.pass) out.push(where(`${s.path} in ${lang} fails the fact audit: ${[...a.tokens, ...a.unknownFacts.map((k) => `unknown fact ${k}`)].join(", ")}`));
       if (!s.path.startsWith("summary") && factKeysIn(s.text).length) out.push(where(`${s.path} in ${lang} cites a fact; only the Writer does`));
     }
   }
 
-  // Sources: every one in DATA_SOURCES.md with the date it was read.
-  for (const src of scenario.sources) {
+  // Sources: every one in DATA_SOURCES.md with the date it was read (a live recording's at its curation).
+  for (const src of live ? [] : scenario.sources) {
     const line = dataSources.split("\n").find((l) => l.includes(src.url));
     if (!line) out.push(where(`its source ${src.url} is missing from DATA_SOURCES.md`));
     else if (!line.includes(src.read_on)) out.push(where(`DATA_SOURCES.md lists ${src.url} without the date ${src.read_on}`));

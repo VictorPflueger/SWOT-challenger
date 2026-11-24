@@ -59,3 +59,22 @@ export function countryName(code, lang) {
     return code;
   }
 }
+
+/**
+ * Euros with cents for a live run's spend and cap: three decimals below ten cents, so a run of half a
+ * cent does not read as free ("€0.004", "0,004 €"), else two ("€0.50", "0,50 €").
+ */
+export function euros(eur, lang, digits = Math.abs(eur) < 0.1 && eur !== 0 ? 3 : 2) {
+  const n = fixed(eur, digits, lang);
+  return lang === "de" ? `${n}\u00a0€` : `€${n}`;
+}
+
+/** A duration in minutes and seconds: "1 min 40 s", "1 Min. 40 s". */
+export function duration(seconds, lang) {
+  const s = Math.max(0, Math.round(seconds));
+  const m = Math.floor(s / 60);
+  const rest = s % 60;
+  const min = lang === "de" ? "Min." : "min";
+  return m ? `${m}\u00a0${min} ${rest}\u00a0s` : `${rest}\u00a0s`;
+}
+

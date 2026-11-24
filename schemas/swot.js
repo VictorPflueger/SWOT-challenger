@@ -1,5 +1,5 @@
 // The SWOT Challenger's data contracts as JSON Schemas (brief section 10): the run's own shapes (Item,
-// Swot, Factor, Decision, Scenario, RunEvent, AuditEvent) and the answers each agent returns (Completion,
+// Swot, Factor, Decision, Scenario, Recording, RunEvent, AuditEvent) and the answers each agent returns (Completion,
 // Signals, Issues, Assessment, Strategies, Summary). The answers' schemas keep every limit the person can
 // read; js/wire.js strips what the API refuses before a request is sent, and js/schema.js and the guards
 // check those limits in code. Every field of an answer is required and none has two types, so a request
@@ -154,6 +154,10 @@ const Scenario = object({
   recorded_choice: list(STRATEGY_ID, 6)
 });
 
+/** A text in one language: { en } or { de }, for a live recording. */
+const oneLanguage = (max, min = 1) => ({ anyOf: [object({ en: { type: "string", minLength: min, maxLength: max } }), object({ de: { type: "string", minLength: min, maxLength: max } })] });
+const oneItem = object({ id: ITEM_ID, text: oneLanguage(90) });
+
 const STEPS = ["start", "complete", "research", "challenge", "assess", "strategise", "summary"];
 /** One event of a run, as the reducer of js/run.js reads it. */
 const RunEvent = object({
@@ -177,8 +181,40 @@ const AuditEvent = object({
   repaired: { type: "boolean" }
 });
 
+/**
+ * A live run saved as a simulation ("Save run as simulation"): the Scenario format in the run's one
+ * language, a real company (not fictional), the sources its research accepted, the person's check of the
+ * AI's items and the strategies chosen, and how the run went: settings, cost, time and each request's
+ * usage. The builder curates it into a recorded scenario: a second language, a fictional company, checks.
+ */
+const Recording = object({
+  id: { const: "live" },
+  source: { const: "live" },
+  as_of: { type: "string", format: "date" },
+  language: { enum: ["en", "de"] },
+  company: object({ name: text(80), sector: { type: "string", pattern: "^[a-z_]+$" }, country: { type: "string", maxLength: 60 }, description: oneLanguage(140, 0), fictional: { const: false } }),
+  sources: list(object({ url: { type: "string", pattern: "^https://" }, read_on: { type: "string", format: "date" } }), 40),
+  entered: object({ strengths: list(oneItem, 8), weaknesses: list(oneItem, 8), opportunities: list(oneItem, 8), threats: list(oneItem, 8) }),
+  answers: { anyOf: [object({ en: { type: "object" } }), object({ de: { type: "object" } })] },
+  decision: { $ref: "Decision.json" },
+  recorded_choice: list(STRATEGY_ID, 6),
+  run: object({
+    preset: { enum: ["fast", "balanced", "thorough"] },
+    model: text(60),
+    effort: { enum: ["low", "medium", "high"] },
+    thinking: { enum: ["disabled", "adaptive"] },
+    research: { type: "boolean" },
+    cap_eur: { type: "number", minimum: 0 },
+    spent_eur: { type: "number", minimum: 0 },
+    seconds: { type: "integer", minimum: 0 },
+    requests: { type: "integer", minimum: 0 },
+    summary_unchecked: { type: "boolean" },
+    audit: list({ $ref: "AuditEvent.json" }, 32)
+  })
+});
+
 /** Every contract by name, for validate(value, SCHEMAS.X, SCHEMAS). */
-export const SCHEMAS = Object.freeze({ Item, Swot, Completion, Signal, Signals, Issue, Issues, Impact, Factor, Assessment, Strategy, Strategies, Summary, Decision, Scenario, RunEvent, AuditEvent });
+export const SCHEMAS = Object.freeze({ Item, Swot, Completion, Signal, Signals, Issue, Issues, Impact, Factor, Assessment, Strategy, Strategies, Summary, Decision, Scenario, Recording, RunEvent, AuditEvent });
 
 /** The schema each request sends, by step (the Scout's as its tool's input schema). */
 export const REQUESTS = Object.freeze({ complete: "Completion", research: "Signals", challenge: "Issues", assess: "Assessment", strategise: "Strategies", summary: "Summary" });

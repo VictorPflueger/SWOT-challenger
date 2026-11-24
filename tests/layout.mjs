@@ -7,11 +7,18 @@
 //   - the step bar's labels do not run into each other;
 //   - the bar under the story is in the window, and at Strategise every strategy card shows in full above
 //     it, also with six strategies in one cell and the longest titles the contract allows;
-//   - the header keeps its height when the decision moves the key figures.
+//   - the header keeps its height when the decision moves the key figures;
+//   - a live run's screens hold as well: the Start form empty and filled, the live-run dialog (at its first
+//     opening every part shows without scrolling, the estimate too, as Vici's pattern has it until a warning
+//     appears; then its start button and the AI notice stay in view), the wait, the check of the AI's items
+//     and an error; "Run it live"
+//     is in view in the step bar on every step, and with the AI notice beside it on Start and Summary,
+//     where the story offers it (TECH_NOTES.md, section 11). The API is a scripted stand-in.
 // Hyphenation is off (tests/fixtures/no-hyphens.css), as in a Chromium without hyphenation dictionaries,
 // so a layout that fits only because the browser hyphenates German fails here as it would in CI.
 // Every request to another host is blocked. Prints LAYOUT OK. Usage: node tests/layout.mjs
-import { APP_ROOT, launchBrowser, serveStatic, NETWORK_NOISE } from "./lib/harness.mjs";
+import { APP_ROOT, launchBrowser, serveStatic, NETWORK_NOISE, MOCK_KEY } from "./lib/harness.mjs";
+import { createFakeClaude, json, CORS, MODELS_LIST } from "./lib/fake-claude.mjs";
 
 const results = [];
 const check = (ok, what) => results.push([!!ok, what]);
@@ -74,6 +81,80 @@ for (const lang of ["en", "de"]) {
 six.recorded_choice = ["R1", "R2"];
 const SIX_SOURCE = `export default ${JSON.stringify(six)};\n`;
 
+/** Whether an element lies wholly inside the window. */
+function inView(selector) {
+  const el = document.querySelector(selector);
+  if (!el) return false;
+  const r = el.getBoundingClientRect();
+  return r.width > 0 && r.height > 0 && r.left >= 0 && r.top >= 0 && r.right <= window.innerWidth + 1 && r.bottom <= window.innerHeight + 1;
+}
+
+/**
+ * The live screens of one size, theme and language: Run it live in view on the simulation's Start and
+ * Summary; the Start form empty and filled; the dialog; the wait; the check; an error. Returns problems.
+ */
+async function liveViews(page, server, lang, api) {
+  const out = [];
+  let header = null;
+  const look = async (label) => {
+    await page.addStyleTag({ url: "/tests/fixtures/no-hyphens.css" });
+    const m = await page.evaluate(measure);
+    for (const p of m.problems) out.push(`live ${label}: ${p}`);
+    // The tiles wait in one line, so the header keeps the simulation's height.
+    if (header !== null && m.header !== header) out.push(`live ${label}: the header is ${m.header} px high, the simulation's ${header} px`);
+    views += 1;
+  };
+  for (let step = 0; step <= 5; step++) {
+    await page.goto(`${server.base}?guide=0&lang=${lang}&scenario=s2&step=${step}`);
+    await page.waitForSelector('html[data-boot="ready"]', { timeout: 20000 });
+    if (!(await page.evaluate(inView, "#btn-live-bar"))) out.push(`step ${step}: "Run it live" is not in view in the step bar`);
+    if (step === 0) header = (await page.evaluate(measure)).header;
+    if (step !== 0 && step !== 5) continue;
+    // A person scrolls the story to it; at Start it is in view from the first screen.
+    await page.evaluate(() => document.getElementById("btn-live")?.closest(".live-entry")?.scrollIntoView({ block: "center" }));
+    if (!(await page.evaluate(inView, "#btn-live")) || !(await page.evaluate(() => { const b = document.getElementById("btn-live"); const n = b?.parentElement.querySelector(".ai-notice"); if (!n) return false; const r = n.getBoundingClientRect(); return r.right <= window.innerWidth + 1 && r.bottom <= window.innerHeight + 1 && r.width > 0; }))) out.push(`step ${step}: "Run it live" and the AI notice beside it are not in view`);
+  }
+  await page.goto(`${server.base}?guide=0&lang=${lang}&scenario=s2`);
+  await page.waitForSelector('html[data-boot="ready"]', { timeout: 20000 });
+  await page.click("#btn-live");
+  await page.waitForSelector("#live-name");
+  await look("empty Start form");
+  await page.selectOption("#live-fill", "s2");
+  await page.waitForFunction(() => document.getElementById("live-name")?.value);
+  await look("filled Start form");
+  await page.click("#btn-cta");
+  await page.waitForSelector("#live-dialog[open]");
+  // Vici's live-run dialog: at its first opening, with no warning, every part shows without scrolling.
+  await page.waitForTimeout(300);
+  const fit = await page.evaluate(() => {
+    const body = document.querySelector("#live-dialog .vc-live__body");
+    const box = body.getBoundingClientRect();
+    const shown = (sel) => { const el = document.querySelector(sel); if (!el) return false; const r = el.getBoundingClientRect(); return r.height > 0 && r.top >= box.top - 0.5 && r.bottom <= box.bottom + 0.5 && r.bottom <= window.innerHeight + 1; };
+    return { warning: !document.getElementById("live-warning").hidden, scroll: body.scrollHeight - body.clientHeight, missing: ["#live-key", ".vc-live__research", "#live-cap", "#live-ack", "#live-estimate"].filter((sel) => !shown(sel)) };
+  });
+  if (fit.warning) out.push("live dialog: a warning shows for the fictional company's SWOT");
+  else if (fit.scroll > 1 || fit.missing.length) out.push(`live dialog: at its first opening the body scrolls by ${Math.round(fit.scroll)} px${fit.missing.length ? `; not in view: ${fit.missing.join(", ")}` : ""}`);
+  await page.fill("#live-key", MOCK_KEY);
+  await page.check("#live-ack");
+  await look("dialog");
+  if (!(await page.evaluate(inView, "#live-start")) || !(await page.evaluate(inView, "#live-dialog .vc-live__footer .ai-notice"))) out.push("live dialog: the start button or the AI notice beside it is not in view");
+  api.mode = "hold";
+  await page.click("#live-start");
+  await page.waitForFunction(() => window.__swot.state().live?.status === "working");
+  await page.waitForSelector("#btn-abort");
+  await look("wait");
+  api.release();
+  await page.waitForFunction(() => window.__swot.state().live?.status === "check", null, { timeout: 15000 });
+  await look("check of the AI's items");
+  await page.click(".ai-item .check button[id^='edit-']");
+  await look("an AI item in edit");
+  api.mode = "error";
+  await page.click("#btn-cta");
+  await page.waitForFunction(() => window.__swot.state().live?.status === "stopped", null, { timeout: 15000 });
+  await look("an error");
+  return out;
+}
+
 let views = 0;
 const headers = new Map();
 try {
@@ -82,7 +163,21 @@ try {
       for (const lang of ["en", "de"]) {
         const context = await browser.newContext({ viewport: { width: w, height: h } });
         await context.addInitScript((t) => { try { localStorage.setItem("vc-theme", t); } catch { /* storage blocked */ } }, theme);
-        await context.route(/^https?:\/\/(?!127\.0\.0\.1)/, (route) => route.abort("blockedbyclient"));
+        // The API stand-in for the live screens: it answers from S2, holds a request while the wait is
+        // measured, and refuses the key once an error is wanted.
+        let release = () => {};
+        const api = { mode: "answer", release: () => release() };
+        const fake = createFakeClaude((n, req, step) => (api.mode === "error" ? { error: { status: 401, type: "authentication_error", message: "invalid x-api-key" } } : { blocks: [json(s2.answers[lang][step])], stop: "end_turn" }));
+        await context.route(/^https?:\/\/(?!127\.0\.0\.1)/, async (route) => {
+          const req = route.request();
+          const u = new URL(req.url());
+          if (u.host !== "api.anthropic.com") return route.abort("blockedbyclient");
+          if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
+          if (u.pathname === "/v1/models") return route.fulfill({ status: 200, headers: { ...CORS, "content-type": "application/json" }, body: JSON.stringify(MODELS_LIST) });
+          const r = fake.handle(req.postData(), req.headers());
+          if (api.mode === "hold") await new Promise((ok) => { release = () => { api.mode = "answer"; ok(); }; });
+          try { await route.fulfill({ status: r.status, headers: { ...CORS, ...r.headers }, body: r.body }); } catch { /* the page went on */ }
+        });
         const page = await context.newPage();
         const errors = [];
         page.on("pageerror", (e) => errors.push(String(e.message || e)));
@@ -116,6 +211,8 @@ try {
         if (cards !== 6) problems.push(`six in one cell: ${cards} cards in the cell`);
         await page.unroute("**/data/scenarios/s2.js");
         check(!problems.length && !errors.length, `${name}: all 18 steps of the three scenarios, and six strategies in one cell${[...problems, ...errors].length ? `:\n      ${[...problems, ...errors].slice(0, 12).join("\n      ")}` : ""}`);
+        const live = await liveViews(page, server, lang, api);
+        check(!live.length && !errors.length, `${name}: the live screens, Run it live, the dialog whole at its first opening and its start button with the AI notice in view${[...live, ...errors].length ? `:\n      ${[...live, ...errors].slice(0, 12).join("\n      ")}` : ""}`);
         await context.close();
       }
     }

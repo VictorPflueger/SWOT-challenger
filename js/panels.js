@@ -13,6 +13,8 @@ import { renderFacts } from "./facts.js";
 import { factsFor } from "./scenario.js";
 import { SECTORS, kpiById } from "../data/kpis.js";
 import { riskMatrix, factorTable, ieMatrix, towsMatrix, issueNo, effectText } from "./matrices.js";
+import { itemsChallenged } from "./engine.js";
+import { liveStartStory, waitStory, stopStory, checkControls, checkCount, researchNote, liveSummaryExtras, liveEntry, yourTurnLive } from "./live_panels.js";
 
 const sectorName = (id, lang) => SECTORS.find((s) => s.id === id)?.name[lang] || id;
 const ai = (...children) => h("span", { class: "vc-tag vc-tag--sm vc-tag--feature" }, icon("sparkle"), ...children);
@@ -45,6 +47,7 @@ function start(ctx) {
   const { run, lang, scenario } = ctx;
   const entered = itemsAt(run, STEP.start).length;
   const agents = ["complete", "challenge", "assess", "strategise", "summary"];
+  if (ctx.live) return liveStarted(ctx, entered);
   return {
     title: t("s.start.title", { company: run.company.name }),
     lead: t("s.start.lead", { n: entered }),
@@ -62,7 +65,7 @@ function start(ctx) {
         h("ol", { class: "agent-steps" }, agents.map((s) => h("li", { dataset: { step: s } }, h("span", { class: "agent-steps__name" }, t(`p.step.${s}`)), " ", h("span", { class: "agent-steps__line" }, t(`p.step.${s}.line`)))))),
       h("dl", { class: "modes" },
         h("div", { class: "mode", dataset: { mode: "simulation" } }, h("dt", {}, t("p.modes.sim")), h("dd", {}, t("p.modes.sim.text"))),
-        h("div", { class: "mode", dataset: { mode: "live" } }, h("dt", {}, h("span", {}, t("p.modes.live")), " ", h("span", { class: "vc-tag vc-tag--feature ai-notice" }, icon("sparkle"), h("span", {}, t("p.ai")))), h("dd", {}, t("p.modes.live.text")))),
+        h("div", { class: "mode", dataset: { mode: "live" } }, h("dt", {}, h("span", {}, t("p.modes.live"))), h("dd", {}, t("p.modes.live.text")), h("dd", { class: "mode__act" }, liveEntry(ctx.handlers.enterLive, { sub: false })))),
       h("p", { class: "version-note" }, t("p.version"))
     ],
     bar: yourTurn(t("p.your.turn"), t("s.start.turn"), cta(t("s.start.cta"), ctx.handlers.start, true))
@@ -71,29 +74,41 @@ function start(ctx) {
 
 function complete(ctx) {
   const { run, lang } = ctx;
-  const added = run.items.filter((it) => it.source === "ai" && !it.added);
+  // In a live run the person checks the AI's items before the challenge; afterwards the removed ones stay
+  // listed, struck through, so the panel shows what the challenge received.
+  const checking = !!ctx.live && ctx.live.stepState(STEP.complete) === "check";
+  const removed = ctx.live && !checking ? run.removed || [] : [];
+  const added = [...run.items.filter((it) => it.source === "ai" && !it.added), ...removed.map((it) => ({ ...it, gone: true }))];
   const text = new Map(run.items.map((it) => [it.id, it.text]));
   const waiting = ctx.waits;
+  const shown = (it) => (checking ? ctx.live.check.edited.get(it.id) ?? it.text : it.text);
+  const isRemoved = (it) => it.gone || (checking && ctx.live.check.removed.has(it.id));
+  const isEdited = (it) => it.edited || (checking && ctx.live.check.edited.has(it.id));
   return {
     title: tn("s.complete.title", added.length),
     lead: t("s.complete.lead"),
     body: [
       h("section", { "aria-labelledby": "ai-items-title" },
         h("h2", { class: "panel-h", id: "ai-items-title" }, t("s.complete.ai")),
-        h("ul", { class: "ai-items" }, added.map((it) => h("li", { class: "ai-item", dataset: { id: it.id } },
+        checking ? h("p", { class: "check-count", "aria-live": "polite" }, checkCount(ctx, added.length)) : null,
+        h("ul", { class: "ai-items" }, added.map((it) => h("li", { class: ["ai-item", isRemoved(it) ? "is-removed" : ""], dataset: { id: it.id } },
           h("p", { class: "ai-item__head" }, ai(t("p.item.ai")), h("span", { class: "ai-item__quad" }, t(`q.${it.quadrant}`))),
-          h("p", { class: "ai-item__text" }, it.text),
+          h("p", { class: "ai-item__text" }, isRemoved(it) ? h("s", {}, shown(it)) : shown(it)),
+          isEdited(it) && !checking ? h("p", { class: "ai-item__edited" }, t("p.item.edited", { text: it.original || "" })) : null,
           h("p", { class: "ai-item__basis" }, t("p.item.basis", { text: it.basis })),
-          h("p", { class: "ai-item__conf" }, t("p.item.confidence", { level: t(`p.conf.${it.confidence}`) })))))),
+          h("p", { class: "ai-item__conf" }, t("p.item.confidence", { level: t(`p.conf.${it.confidence}`) })),
+          checking ? checkControls(it, ctx) : it.gone ? h("p", { class: "check" }, h("span", { class: "vc-tag vc-tag--sm check__removed" }, icon("minus"), t("s.check.removed"))) : null)))),
       run.misfiled.length ? h("section", { "aria-labelledby": "misfiled-title" },
         h("h2", { class: "panel-h", id: "misfiled-title" }, t("s.complete.misfiled")),
         h("ul", { class: "misfiled" }, run.misfiled.map((m) => h("li", { class: "misfiled__note" },
           h("p", { class: "misfiled__item" }, h("span", { class: "misfiled__text" }, text.get(m.item)), " ", h("span", { class: "misfiled__to" }, t("s.complete.belongs", { quadrant: t(`q.${m.belongs_in}`) }))),
           h("p", { class: "misfiled__why" }, m.reason))))) : null
     ],
-    bar: waiting
-      ? yourTurn(t("p.your.turn"), t("s.complete.turn"), cta(t("s.complete.cta"), ctx.handlers.challenge, true))
-      : playsOn(t("s.complete.cta"), ctx.handlers.challenge, ctx)
+    bar: checking
+      ? yourTurnLive(t("p.your.turn"), t("s.check.turn"), cta(t("s.complete.cta"), ctx.handlers.challenge, true))
+      : waiting
+        ? yourTurn(t("p.your.turn"), t("s.complete.turn"), cta(t("s.complete.cta"), ctx.handlers.challenge, true))
+        : playsOn(ctx.live ? t("s.challenge.cta.live") : t("s.complete.cta"), ctx.live ? ctx.handlers.next : ctx.handlers.challenge, ctx)
   };
 }
 
@@ -151,11 +166,12 @@ const signedMoney = (x, lang) => (x < 0 ? "−" : x > 0 ? "+" : "") + money(Math
 
 function challenge(ctx) {
   const { run, lang } = ctx;
-  const f = ctx.figures.before;
+  const items = itemsChallenged(run.items, run.issues);
   return {
-    title: t("s.challenge.title", { n: f.items.challenged, total: f.items.total }),
+    title: t("s.challenge.title", { n: items.challenged, total: items.total }),
     lead: t("s.challenge.lead"),
     body: [
+      ctx.live ? researchNote(ctx) : null,
       h("div", { class: "challenge" },
         h("div", { class: "challenge__matrix" }, riskMatrix({ issues: run.issues, lang, lit: ctx.litIssue })),
         h("section", { class: "challenge__issues", "aria-labelledby": "issues-title" },
@@ -235,7 +251,7 @@ function strategise(ctx) {
     ],
     bar: decided
       ? playsOn(t("s.strat.cta.next"), ctx.handlers.next, ctx)
-      : yourTurn(t("p.your.decision"), turnSentence(ctx), cta(none ? t("s.strat.cta.none") : t("s.strat.cta"), ctx.handlers.adopt, true))
+      : (ctx.live ? yourTurnLive : yourTurn)(t("p.your.decision"), turnSentence(ctx), cta(none ? t("s.strat.cta.none") : t("s.strat.cta"), ctx.handlers.adopt, true))
   };
 }
 
@@ -275,11 +291,33 @@ function summary(ctx) {
                 h("div", {}, h("dt", {}, t("s.strat.owner.label")), h("dd", {}, x.owner)),
                 h("div", {}, h("dt", {}, t("s.strat.time.label")), h("dd", {}, x.time_to_impact))))))
             : h("p", { class: "chosen__none" }, t("s.sum.none")),
-          h("p", { class: "version-note" }, t("s.sum.report"))))
+          h("p", { class: "version-note" }, t("s.sum.report")),
+          ...(ctx.live ? liveSummaryExtras(ctx) : [h("div", { class: "sum-live" }, h("p", { class: "sum-live__q" }, t("s.sum.live.next")), liveEntry(ctx.handlers.enterLive, { sub: false }))])))
     ],
-    bar: h("div", { class: "foot foot--end" },
-      h("button", { type: "button", class: "vc-button vc-button--secondary", id: "btn-replay", on: { click: ctx.handlers.replay } }, icon("refresh"), t("p.replay")),
-      cta(t("s.sum.cta", { company: ctx.nextCompany }), ctx.handlers.nextCompany, false))
+    bar: ctx.live
+      ? h("div", { class: "foot foot--end" }, h("button", { type: "button", class: "vc-button vc-button--secondary", id: "btn-sim-end", on: { click: ctx.handlers.leaveLive } }, icon("chevron-left"), t("p.live.leave")))
+      : h("div", { class: "foot foot--end" },
+        h("button", { type: "button", class: "vc-button vc-button--secondary", id: "btn-replay", on: { click: ctx.handlers.replay } }, icon("refresh"), t("p.replay")),
+        cta(t("s.sum.cta", { company: ctx.nextCompany }), ctx.handlers.nextCompany, false))
+  };
+}
+
+/** Start after a live run began: the company and the SWOT as the person entered them. */
+function liveStarted(ctx, entered) {
+  const { run, lang } = ctx;
+  return {
+    title: t("s.live.started.title", { company: run.company.name }),
+    lead: t("s.live.started.lead", { n: entered }),
+    body: [
+      h("section", { class: "company", "aria-labelledby": "company-title" },
+        h("h2", { class: "panel-h vc-visually-hidden", id: "company-title" }, run.company.name),
+        run.company.description ? h("p", { class: "company__desc" }, run.company.description) : null,
+        h("dl", { class: "company__facts" },
+          h("div", {}, h("dt", {}, t("s.start.sector")), h("dd", {}, run.sector ? sectorName(run.sector, lang) : t("s.live.sector.decide"))),
+          run.company.country ? h("div", {}, h("dt", {}, t("s.live.country")), h("dd", {}, run.company.country)) : null),
+        h("p", { class: "company__fiction" }, t("s.live.public")))
+    ],
+    bar: playsOn(t("s.live.started.cta"), ctx.handlers.next, ctx)
   };
 }
 
@@ -291,6 +329,18 @@ const STEPS_VIEW = [start, complete, challenge, assess, strategise, summary];
  * Returns { title, lead, body, bar, wide }.
  */
 export function storyFor(step, ctx) {
+  if (ctx.live) {
+    const state = ctx.live.stepState(step);
+    if (state === "working") return waitStory(ctx);
+    if (state === "stopped") return stopStory(ctx);
+    if (state === "form") return liveStartStory(ctx);
+    // A run stopped at its cap says so on every screen of it, not only where it stopped.
+    const stop = ctx.live.snap?.stop;
+    if (stop?.reason === "cap") {
+      const story = STEPS_VIEW[step](ctx);
+      return { ...story, body: [h("p", { class: "cap-note", role: "note" }, icon("warning"), " ", h("strong", {}, t("x.cap.title")), " ", t("x.cap.next")), ...story.body] };
+    }
+  }
   return STEPS_VIEW[step](ctx);
 }
 

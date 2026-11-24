@@ -7,6 +7,9 @@
 // plays or pauses; a step chosen by click, arrow key, clicker (PageDown, PageUp) or address pauses Play.
 // The address follows the presenter (?scenario=s2&step=4), and a link to a later step plays the run up to
 // it, along the agents' recorded choice. Nothing is stored: the run lives in this tab's memory only.
+// A live run (js/live.js) uses the same presenter: LIVE replaces SIMULATION, Play and the scenario
+// picker give way to "Back to the simulation" and Clear everything, the agents set the pace, and the
+// address carries nothing of what the person entered.
 
 import { getLang, setLang, onLang, t } from "./i18n/index.js";
 import { SCENARIOS } from "../data/scenarios/index.js";
@@ -20,6 +23,8 @@ import { renderMethod } from "./method.js";
 import { h, fill, wordCount } from "./dom.js";
 import { money, score, zoneName, sessionCost } from "./format.js";
 import { APP } from "./config.js";
+import { createLive } from "./live.js";
+import { itemsChallenged } from "./engine.js";
 
 const STEP_KEYS = ["start", "complete", "challenge", "assess", "strategise", "summary"];
 const PLAY_KEYS = Object.freeze({ play: "p.play", pause: "p.pause", replay: "p.replay" });
@@ -36,7 +41,8 @@ export async function start() {
     workspace: $("main"), grid: $("grid"), legend: $("legend"), swotTitle: $("swot-title"),
     title: $("step-title"), lead: $("step-lead"), body: $("step-body"), bar: $("step-bar"), scroll: $("story-scroll"),
     steps: $("steps"), back: $("btn-back"), next: $("btn-next"), play: $("btn-play"), playText: $("play-text"),
-    picker: $("scenario"), announce: $("announce"), method: $("method"), updates: $("updates")
+    picker: $("scenario"), announce: $("announce"), method: $("method"), updates: $("updates"),
+    modeTag: $("mode-tag"), modeText: $("mode-text"), modeTip: $("tip-mode"), liveControls: $("live-controls"), pick: document.querySelector(".scenario-pick"), liveOpen: $("btn-live-bar")
   };
   const tiles = createTiles(document);
 
@@ -56,10 +62,24 @@ export async function start() {
   };
   /** Play: on, the frame it asked for, the time spent reading the step, the step it timed, the last frame. */
   const P = { on: false, raf: 0, at: 0, step: -1, last: 0 };
+  /** Where the simulation stood when the live run opened, to come back to. */
+  let simStep = 0;
+  const live = createLive({
+    render: () => render(),
+    go: (n, opts) => go(n, opts),
+    announce: (text) => announce(text),
+    leave: () => leaveLive(),
+    // The Strategist has answered: its recommendations are ticked, as in a recorded run.
+    decide: (ids) => { state.selection = new Set(ids); state.adopted = null; },
+    // A new run starts with nothing chosen.
+    reset: () => { state.selection = new Set(); state.adopted = null; state.open.clear(); state.litIssue = null; }
+  });
+  const isLive = () => live.active;
+  const itemsOf = (run) => itemsChallenged(run.items, run.issues);
 
   // ---- language ---------------------------------------------------------------------------------------
   for (const button of document.querySelectorAll(".lang-option")) button.addEventListener("click", () => setLang(button.dataset.lang));
-  onLang(() => { showLanguage(getLang()); render(); renderMethodNow(); });
+  onLang(() => { showLanguage(getLang()); render(); renderMethodNow(); live?.refreshDialog(); });
   showLanguage(getLang());
 
   // ---- the scenario picker ----------------------------------------------------------------------------
@@ -81,16 +101,17 @@ export async function start() {
 
   const decided = () => !!state.adopted && sameChoice(state.adopted, [...state.selection]);
   /** The furthest step the run has reached: Start before the agents run, Summary after the decision. */
-  const maxStep = () => (!state.started ? STEP.start : decided() ? LAST_STEP : STEP.strategise);
+  const maxStep = () => (isLive() ? live.maxStep() : !state.started ? STEP.start : decided() ? LAST_STEP : STEP.strategise);
   /** The step waits for the person: the start, the challenge, the decision. */
   function waits() {
+    if (isLive()) return ["form", "check", "decide"].includes(live.stepState(state.step));
     if (state.step === STEP.start && !state.started) return true;
     if (state.step === STEP.complete && !state.challenged) return true;
     if (state.step === STEP.strategise && !decided()) return true;
     return false;
   }
   /** The story is over: the Summary is on screen and nothing is left to do. */
-  const finished = () => state.step === LAST_STEP && decided();
+  const finished = () => !isLive() && state.step === LAST_STEP && decided();
   /** A dialog covers the page: Play holds its time until it closes. */
   const covered = () => !!document.querySelector("dialog[open]");
 
@@ -104,15 +125,21 @@ export async function start() {
       b.disabled = n > max;
       label.textContent = t(`p.step.${key}`);
       let turn = "";
-      if (n === STEP.start && !state.started) turn = t("p.your.turn");
-      if (n === STEP.complete && state.started && !state.challenged) turn = t("p.your.turn");
-      if (n === STEP.strategise && state.reached >= STEP.strategise && !decided()) turn = t("p.your.decision");
+      if (isLive()) {
+        const st = live.stepState(n);
+        if (st === "form" || st === "check") turn = t("p.your.turn");
+        if (st === "decide") turn = t("p.your.decision");
+      } else {
+        if (n === STEP.start && !state.started) turn = t("p.your.turn");
+        if (n === STEP.complete && state.started && !state.challenged) turn = t("p.your.turn");
+        if (n === STEP.strategise && state.reached >= STEP.strategise && !decided()) turn = t("p.your.decision");
+      }
       li.dataset.turn = turn ? "yours" : "";
       hint.textContent = turn;
       b.title = b.disabled ? t("p.step.locked") : "";
     });
     els.back.disabled = state.step === 0;
-    const open = state.step === STEP.strategise && !decided();
+    const open = isLive() ? state.step >= max : state.step === STEP.strategise && !decided();
     els.next.disabled = state.step >= LAST_STEP || open;
     els.next.title = open ? t("p.decide.first") : "";
     drawPlay();
@@ -120,7 +147,7 @@ export async function start() {
 
   // ---- rendering --------------------------------------------------------------------------------------
   function runIn(lang = getLang()) {
-    return state.run.byLang[lang];
+    return isLive() ? live.view() : state.run.byLang[lang];
   }
   function estimate() {
     const key = `${state.id}:${getLang()}`;
@@ -130,15 +157,21 @@ export async function start() {
 
   const handlers = {
     start: () => { state.started = true; go(STEP.complete, { keep: true }); play(); },
-    challenge: () => { state.challenged = true; go(STEP.challenge, { keep: true }); },
+    challenge: () => {
+      if (isLive()) { live.challenge(); return; }
+      state.challenged = true; go(STEP.challenge, { keep: true });
+    },
     next: () => go(state.step + 1, { keep: true }),
     adopt: () => {
       state.adopted = [...state.selection];
       calm();
+      if (isLive()) { live.adopt(state.adopted); return; }
       render();
       announce(els.title.textContent);
       els.title.focus({ preventScroll: true });
     },
+    enterLive: () => enterLive(),
+    leaveLive: () => leaveLive(),
     toggle: (id, on) => {
       if (on) state.selection.add(id); else state.selection.delete(id);
       render();
@@ -155,28 +188,34 @@ export async function start() {
     if (!state.run) return;
     const lang = getLang();
     const run = runIn(lang);
+    const liveNow = isLive() ? live : null;
+    renderMode();
     renderStepBar();
     els.workspace.dataset.step = STEP_KEYS[state.step];
+    els.workspace.dataset.mode = liveNow ? "live" : "simulation";
 
-    // The grid shows the story at this step; the items a lit issue names are pointed at.
-    const fixed = state.adopted ? addressed(run, state.adopted) : new Map();
+    // The grid shows the story at this step; the items a lit issue names are pointed at. A live run's
+    // figures exist once the Analyst has weighed the items.
+    const scored = run.factors.length > 0;
+    const fixed = state.adopted && scored ? addressed(run, state.adopted) : new Map();
     const lit = new Set();
     if (state.litIssue) {
       const issue = run.issues.find((i) => i.id === state.litIssue);
       if (issue) for (const id of [...issue.items, ...issue.added]) lit.add(id);
     }
-    const view = { run, step: state.step, lang, addressed: fixed, open: state.open, lit, onToggle: (id, isOpen) => (isOpen ? state.open.add(id) : state.open.delete(id)) };
-    els.swotTitle.textContent = t("p.swot.title", { company: run.company.name });
+    const checking = liveNow && liveNow.stepState(STEP.complete) === "check";
+    const view = { run, step: state.step, lang, addressed: fixed, open: state.open, lit, live: liveNow, liveRun: !!liveNow, check: checking ? liveNow.check : null, onToggle: (id, isOpen) => (isOpen ? state.open.add(id) : state.open.delete(id)) };
+    els.swotTitle.textContent = run.company.name ? t("p.swot.title", { company: run.company.name }) : t("s.live.title");
     fill(els.grid, gridNodes(view));
     fill(els.legend, legendNodes(view));
 
     // The story: keep the focus on the control that had it, by its id.
     const active = document.activeElement;
     const focusId = active && els.body.contains(active) && active.id ? active.id : active && els.bar.contains(active) && active.id ? active.id : null;
-    const figures = { before: figuresFor(run, []), after: figuresFor(run, state.adopted || []) };
+    const figures = scored ? { before: figuresFor(run, []), after: figuresFor(run, state.adopted || []) } : null;
     const ctx = {
-      run, lang, scenario: state.run.scenario, step: state.step, state,
-      figures, preview: figuresFor(run, [...state.selection]),
+      run, lang, scenario: state.run.scenario, step: state.step, state, live: liveNow,
+      figures, preview: scored ? figuresFor(run, [...state.selection]) : null,
       waits: waits(), play: { on: P.on, attention: state.attention }, litIssue: state.litIssue, open: state.open,
       nextCompany: SCENARIOS[(SCENARIOS.findIndex((s) => s.id === state.id) + 1) % SCENARIOS.length].name,
       handlers
@@ -189,7 +228,12 @@ export async function start() {
     els.workspace.dataset.wide = story.wide ? "true" : "false";
     if (focusId) document.getElementById(focusId)?.focus({ preventScroll: true });
 
-    tiles.render({ lang, loading: false, figures: { before: figures.before, after: figures.after }, decided: !!state.adopted, addressedCount: fixed.size, estimate: estimate() });
+    if (liveNow) {
+      const snap = liveNow.snap;
+      tiles.render({ lang, live: { figures, issues: run.issues.length > 0 || (snap && ["assess", "strategise", "summary"].includes(snap.step)), items: itemsOf(run), spentEur: snap?.spentEur ?? 0, capEur: snap?.capEur ?? null, model: snap?.settings.model ?? null, decided: !!state.adopted && scored, addressedCount: fixed.size, done: snap?.status === "done" } });
+    } else {
+      tiles.render({ lang, loading: false, figures: { before: figures.before, after: figures.after }, decided: !!state.adopted, addressedCount: fixed.size, estimate: estimate() });
+    }
     fillPlay(P.on && !waits() ? P.at / readMs() : 0);
     drawFoot();
     renderUpdates();
@@ -203,7 +247,7 @@ export async function start() {
   }
 
   function play() {
-    if (!state.run) return;
+    if (!state.run || isLive()) return;
     // On the first screen Play starts the agents, as Start does. Replay: the run again from the start.
     if (finished()) { replay(); return; }
     if (state.step === STEP.start && !state.started) { state.started = true; go(STEP.complete, { keep: true, focus: false }); }
@@ -348,7 +392,7 @@ export async function start() {
     if (e.key === " ") {
       if (target?.closest?.("button, a, summary, label, [role=button]")) return;
       e.preventDefault();
-      if (!e.repeat) (P.on ? pause() : play());
+      if (!e.repeat && !isLive()) (P.on ? pause() : play());
       return;
     }
     // A presentation clicker sends the arrow keys or PageDown and PageUp: one step on or back, paused.
@@ -358,10 +402,59 @@ export async function start() {
 
   function syncUrl() {
     const u = new URL(location.href);
-    u.searchParams.set("scenario", state.id);
-    if (state.step > 0) u.searchParams.set("step", String(state.step)); else u.searchParams.delete("step");
+    if (isLive()) {
+      // Nothing of a live run goes into the address.
+      u.searchParams.delete("scenario");
+      u.searchParams.delete("step");
+    } else {
+      u.searchParams.set("scenario", state.id);
+      if (state.step > 0) u.searchParams.set("step", String(state.step)); else u.searchParams.delete("step");
+    }
     history.replaceState(null, "", u);
   }
+
+  // ---- live runs ------------------------------------------------------------------------------------
+  /** LIVE or SIMULATION in the header, with its tooltip; Play and the picker, or the live run's controls. */
+  function renderMode() {
+    const on = isLive();
+    els.modeTag.dataset.mode = on ? "live" : "simulation";
+    els.modeText.textContent = t(on ? "p.mode.live" : "p.mode.simulation");
+    els.modeTip.textContent = t(on ? "p.mode.tip.live" : "p.mode.tip");
+    els.play.hidden = on;
+    els.pick.hidden = on;
+    els.liveOpen.hidden = on;
+    // A live run kept in memory is one click away from the simulation.
+    $("live-open-text").textContent = t(live.run ? "p.live.return" : "p.live.run");
+    els.liveControls.hidden = !on;
+    document.documentElement.dataset.mode = on ? "live" : "simulation";
+  }
+
+  /** "Run it live": the live run where it stands, or the Start form. */
+  function enterLive() {
+    pause();
+    simStep = state.step;
+    live.active = true;
+    state.litIssue = null;
+    state.open.clear();
+    if (!live.run) { state.selection = new Set(); state.adopted = null; }
+    state.step = live.maxStep();
+    syncUrl();
+    render();
+    els.scroll.scrollTop = 0;
+    announce(t("p.step.announce", { n: state.step, title: els.title.textContent }));
+    els.title.focus({ preventScroll: true });
+  }
+
+  /** Back to the simulation: the live run stays in memory until Clear everything or the tab closes. */
+  function leaveLive() {
+    if (!isLive()) { render(); return; }
+    live.active = false;
+    openScenario(state.id, simStep);
+    els.title.focus({ preventScroll: true });
+  }
+  $("btn-sim").addEventListener("click", leaveLive);
+  els.liveOpen.addEventListener("click", enterLive);
+  $("btn-clear").addEventListener("click", () => live.askClear());
 
   function announce(text) {
     els.announce.textContent = text;
@@ -422,7 +515,7 @@ export async function start() {
 
   // The guide's Start, on a guide opened during a run, plays on from where the page is.
   for (const g of document.querySelectorAll("dialog[data-vc-guide]")) {
-    g.addEventListener("vc:guideclose", (e) => { if (e.detail?.returnValue === "done" && state.started && !finished()) play(); });
+    g.addEventListener("vc:guideclose", (e) => { if (!isLive() && e.detail?.returnValue === "done" && state.started && !finished()) play(); });
   }
 
   // ---- start ------------------------------------------------------------------------------------------
@@ -430,7 +523,7 @@ export async function start() {
   const asked = Number(params.get("step"));
   await openScenario(state.id, Number.isInteger(asked) && asked > 0 && asked <= LAST_STEP ? asked : 0);
   await fillGuideFigures();
-  window.__swot = { version: APP.version, state: () => ({ id: state.id, step: state.step, started: state.started, challenged: state.challenged, adopted: state.adopted, selection: [...state.selection], playing: P.on }) };
+  window.__swot = { version: APP.version, state: () => ({ mode: isLive() ? "live" : "simulation", id: state.id, step: state.step, started: state.started, challenged: state.challenged, adopted: state.adopted, selection: [...state.selection], playing: P.on, live: live.snap ? { status: live.snap.status, step: live.snap.step, requests: live.snap.requests, spentEur: live.snap.spentEur, stop: live.snap.stop } : null }) };
 }
 
 /**

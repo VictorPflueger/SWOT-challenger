@@ -4,7 +4,7 @@
 // read a run the same way.
 
 import { SCENARIOS, DEFAULT_SCENARIO } from "../data/scenarios/index.js";
-import { assemble, recommended, figuresFor } from "./scenario.js";
+import { assemble, recommended, figuresFor, languagesOf } from "./scenario.js";
 import { ratingsAfter } from "./engine.js";
 
 /** The steps by name, as the step bar numbers them: Start is 0, Summary 5. */
@@ -25,10 +25,15 @@ export async function loadScenario(id) {
   return loaded.get(entry.id);
 }
 
-/** A played run: the scenario and its run in both languages, with the agents' recommendation. */
+/**
+ * A played run: the scenario and its run in both languages, with the agents' recommendation. A live
+ * recording holds one language; its run shows in that language whichever language the page has.
+ */
 export function createRun(scenario) {
-  const byLang = Object.freeze({ en: assemble(scenario, "en"), de: assemble(scenario, "de") });
-  return Object.freeze({ id: scenario.id, scenario, byLang, recommended: recommended(byLang.en), recorded: [...scenario.recorded_choice] });
+  const langs = languagesOf(scenario);
+  const one = langs.length === 1 ? assemble(scenario, langs[0]) : null;
+  const byLang = Object.freeze(one ? { en: one, de: one } : { en: assemble(scenario, "en"), de: assemble(scenario, "de") });
+  return Object.freeze({ id: scenario.id, scenario, byLang, language: one ? langs[0] : null, recommended: recommended(byLang.en), recorded: [...(scenario.recorded_choice || [])] });
 }
 
 /** The items a step shows: the team's from Start, the Completer's from Complete, the added from Challenge. */
