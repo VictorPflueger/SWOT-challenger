@@ -239,7 +239,11 @@ async function liveByKeyboard(lang) {
     await ctaReady(page);
     if (!(await tabTo(page, "#btn-cta", stops))) throw new Error("Tab never reached the bar's button on the Start form");
     await page.keyboard.press("Enter");
-    await page.waitForSelector("#live-dialog[open]", { timeout: 10000 });
+    // Where the dialog stays shut, the message says where the focus was and what the form held.
+    await page.waitForSelector("#live-dialog[open]", { timeout: 10000 }).catch(async (e) => {
+      const at = await page.evaluate(() => ({ focus: document.activeElement?.id || document.activeElement?.tagName, cta: document.getElementById("btn-cta")?.textContent.trim(), name: document.getElementById("live-name")?.value, error: document.getElementById("live-name-error")?.textContent || "" }));
+      throw new Error(`Enter on the Start form's button left the dialog shut (focus ${at.focus}, button "${at.cta}", name "${at.name}"${at.error ? `, ${at.error}` : ""}): ${String(e.message).split("\n")[0]}`);
+    });
     if (!(await tabTo(page, "#live-key", stops, 60))) throw new Error("Tab never reached the key field");
     await page.keyboard.type(MOCK_KEY);
     if (!(await tabTo(page, "#live-ack", stops, 60))) throw new Error("Tab never reached the box for public information");

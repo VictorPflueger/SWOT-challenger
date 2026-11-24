@@ -298,7 +298,8 @@ async function ac11() {
     const items = await q.page.$$eval("#live-warning-list li", (li) => li.map((x) => x.textContent));
     const where = (q) => T("en", "d.warn.in.quadrant", { quadrant: q });
     const want = [T("en", "d.warn.email", { where: where("Strengths") }), T("en", "d.warn.iban", { where: where("Weaknesses") }), T("en", "d.warn.label", { where: where("Threats") }), T("en", "d.warn.phone", { where: EN["d.warn.in.description"] })];
-    check(!(await q.page.$eval("#live-warning", (w) => w.hidden)) && want.every((w) => items.includes(w)) && items.length === 4, `the warning lists the e-mail address, the IBAN, the classification and the phone number with their fields, and not "Internal processes are slow" (${items.length} found)`);
+    const entered = await q.page.$$eval(".swot--form .vc-framework__area", (areas) => areas.map((a) => `${a.dataset.quad}: ${[...a.querySelectorAll("input")].map((i) => i.value).filter(Boolean).join(" | ")}`));
+    check(!(await q.page.$eval("#live-warning", (w) => w.hidden)) && want.every((w) => items.includes(w)) && items.length === 4, `the warning lists the e-mail address, the IBAN, the classification and the phone number with their fields, and not "Internal processes are slow" (${items.length} found${want.every((w) => items.includes(w)) ? "" : `: ${items.join("; ")}; the form holds ${entered.join("; ")}`})`);
     await q.page.fill("#live-key", MOCK_KEY);
     await q.page.check("#live-ack");
     check(!(await q.page.$eval("#live-start", (b) => b.disabled)), "it warns and does not block");
