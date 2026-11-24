@@ -1,0 +1,18 @@
+{
+  "_about": "The frozen reference figures of each scenario, worked out by hand from the scenario's weights, ratings, likelihoods and euro ranges when it was written (TECH_NOTES.md, section 10). The scenario checker fails when the engine's figures for these choices differ by more than 1e-9.",
+  "s1": {
+    "recorded": {"chosen": ["R1", "R2"], "figures": {"ife_before": 1.95, "ife_after": 2.15, "efe_before": 1.75, "efe_after": 2.45, "cell_before": "IX", "cell_after": "V", "at_stake": 4115000, "priced": 4, "issues": 6, "left": 3160000, "upside": 500000, "challenged": 7, "total": 12, "added": 1}},
+    "none": {"chosen": [], "figures": {"ife_after": 1.95, "efe_after": 1.75, "cell_after": "IX", "left": 4115000, "upside": 0}},
+    "all": {"chosen": ["R1", "R2", "R3", "R4"], "figures": {"ife_after": 2.4, "efe_after": 2.9, "cell_after": "V", "left": 2450000, "upside": 800000}}
+  },
+  "s2": {
+    "recorded": {"chosen": ["R1", "R2"], "figures": {"ife_before": 2.5, "ife_after": 2.65, "efe_before": 1.6, "efe_after": 2.55, "cell_before": "VIII", "cell_after": "V", "at_stake": 4945000, "priced": 5, "issues": 6, "left": 3320000, "upside": 700000, "challenged": 6, "total": 14, "added": 1}},
+    "none": {"chosen": [], "figures": {"ife_after": 2.5, "efe_after": 1.6, "cell_after": "VIII", "left": 4945000, "upside": 0}},
+    "all": {"chosen": ["R1", "R2", "R3", "R4", "R5"], "figures": {"ife_after": 2.65, "efe_after": 2.75, "cell_after": "V", "left": 2480000, "upside": 1100000}}
+  },
+  "s3": {
+    "recorded": {"chosen": ["R1", "R3"], "figures": {"ife_before": 2.45, "ife_after": 2.45, "efe_before": 1.7, "efe_after": 2.35, "cell_before": "VIII", "cell_after": "V", "at_stake": 2630000, "priced": 4, "issues": 5, "left": 2310000, "upside": 700000, "challenged": 5, "total": 12, "added": 1}},
+    "none": {"chosen": [], "figures": {"ife_after": 2.45, "efe_after": 1.7, "cell_after": "VIII", "left": 2630000, "upside": 0}},
+    "all": {"chosen": ["R1", "R2", "R3", "R4"], "figures": {"ife_after": 2.65, "efe_after": 2.65, "cell_after": "V", "left": 1280000, "upside": 700000}}
+  }
+}

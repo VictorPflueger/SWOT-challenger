@@ -143,6 +143,7 @@ const Scenario = object({
   source: { enum: ["authored", "recorded"] },
   as_of: { type: "string", format: "date" },
   company: object({ name: text(80), sector: { type: "string", pattern: "^[a-z_]+$" }, country: { type: "string", pattern: "^[A-Z]{2}$" }, description: both(200), fictional: { const: true } }),
+  sources: list(object({ url: { type: "string", pattern: "^https://" }, read_on: { type: "string", format: "date" } }), 40, 1),
   entered: object({
     strengths: list(object({ id: ITEM_ID, text: both(90) }), 8),
     weaknesses: list(object({ id: ITEM_ID, text: both(90) }), 8),

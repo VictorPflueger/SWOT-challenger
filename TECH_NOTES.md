@@ -1,6 +1,6 @@
 # Technical notes
 
-Version 0.1.0 (M1 Foundations), 23 November 2026. These notes record what was checked at source, with the date, and the decisions the code rests on. PLAN.md is the plan Victor approved on 23 November 2026, with the eleven cuts of its design review. Where the code says "brief 6.4", it means section 6.4 of Victor's build brief, which is not part of this repository.
+Version 0.2.0 (M2 Simulation), 23 November 2026. These notes record what was checked at source, with the date, and the decisions the code rests on. PLAN.md is the plan Victor approved on 23 November 2026, with the eleven cuts of its design review. Where the code says "brief 6.4", it means section 6.4 of Victor's build brief, which is not part of this repository.
 
 ## 1. Models and prices
 
@@ -14,7 +14,7 @@ Read on 23 November 2026 at https://platform.claude.com/docs/en/about-claude/pri
 
 Haiku 5.5 prompts over 100,000 tokens cost $0.50 input and $2.50 output, so no request may come near that size. Web search costs $10 per 1,000 searches plus its tokens. The three models share a context of one million tokens, 128,000 output tokens and a reliable knowledge cutoff of June 2026.
 
-Version 0.1.0 calls no model. The live run arrives in 0.3.0; its prices go into `js/config.js` then, read again on the day and dated here.
+Version 0.2.0 calls no model, but `js/config.js` already holds these prices: the simulation shows what a live run of its scenario would cost (section 10). Costs show in euros at the rate the four tools share, 1 USD = 0.894 EUR, which keeps a cost meter steady. For comparison, the European Central Bank's reference rate of 20 November 2026 was 1.0990 US dollars a euro, about 0.910 euros a dollar (read on 23 November 2026 at https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-usd.en.html). The live run arrives in 0.3.0; its prices are read again on that day and dated here.
 
 ## 2. The API from the browser
 
@@ -77,12 +77,49 @@ On 23 November 2026 the three siblings held their Phase 0 plans and no code (BMC
 
 ## 8. Tests
 
-`node tests/run-all.mjs` runs every suite; `tests/README.md` says what each proves and how to install Playwright. The private term list of the hygiene check is the `HYGIENE_TERMS` secret. It is not set yet, so CI runs the generic checks, and every push is first checked locally against a list kept outside the repository.
+`node tests/run-all.mjs` runs every suite; `tests/README.md` says what each proves and how to install Playwright. The private term list of the hygiene check is the `HYGIENE_TERMS` secret. It is not set yet, so CI runs the generic checks. Until 0.1.0 every push was also checked locally against a list kept outside the repository; on 23 November 2026 Victor decided to drop that step, so until the secret is set the generic checks are the whole check.
 
-## 9. Where this version differs from PLAN.md
+## 9. Where 0.1.0 differs from PLAN.md
 
 On 23 November 2026, while M1 was being built, the PESTEL Challenger added two patterns to Vici's main (commit `eaebdca`): the session-only data rule, with `storageProblems` and `storedKeyProblems`, and a blank starter that runs under the strict policy, with `vici-theme.js` and `policyProblems`. This tool takes them over rather than building its own.
 
 - PLAN.md's file tree lists a theme script of this tool's own in js/. Vici's `vici/dist/vici-theme.js` does the same job, so there is none.
 - PLAN.md has this tool add the session-only data rule to Vici in M3. Vici has it now; M3 adds only the live-run dialog.
 - Vici's page on building a prototype now asks that the browser warn before the page closes while a result has not been downloaded. That comes with the report in 0.4.0.
+
+## 10. The simulation (0.2.0)
+
+Version 0.2.0 plays three recorded runs. `data/scenarios/s1.js` to `data/scenarios/s3.js` hold, for each fictional company, what its team entered, every agent's answer in both languages under the contracts of `schemas/swot.js`, the sources it cites and the choice the recording made. `js/scenario.js` assembles a run the way the page shows it. `js/scenario_check.js` holds the scenario rules, which `tools/check-scenarios.mjs` and the tests apply. `tests/fixtures/scenarios.json` holds every scenario's figures for the recorded choice, for no choice and for all four strategies, worked out by hand. DATA_SOURCES.md lists every fact a scenario cites, with its source and the date it was read, and where the facts differ from the Phase 0 plan.
+
+### 10.1 Decisions
+
+- A "missing" issue names no item of the SWOT; the factor the challenge adds carries it. The checker refuses a missing issue that names items, so no item shows as missing and as something else at once.
+- An item counts as addressed when a chosen strategy raises its rating. The grid shows this from Summary on, once the choice is adopted.
+- A strategy's kind follows its TOWS type: SO and WO turn an issue into an advantage, ST and WT mitigate it. The TOWS matrix names the kind once per cell, not on every card.
+- The Writer writes one summary that holds for any choice. It cites what the choice changes through `{{fact:key}}` placeholders, which code fills in for the strategies the person adopted, and the fact audit refuses every other figure (`tests/audit.mjs`).
+- The key figures follow the adopted choice: the tiles strike the old value through beside the new one. Changing the choice after Adopt asks for Adopt again before Summary opens.
+- Play stays on a step for 3 seconds plus 0.23 seconds a word of its title and lead, at least 7 and at most 14 seconds. It holds while a dialog is open and stops where the person acts: Start, Challenge this SWOT and the decision. This is Vici's "Presenting step by step".
+- A scenario older than 90 days shows "Check for updates" on the SIMULATION tape.
+
+### 10.2 The session cost of a simulation
+
+A simulation calls no model, so its cost tile is an estimate of what a live run of the same scenario would cost with the defaults: Haiku 5.5, research off. `js/estimate.js` counts the run's five requests (complete, challenge, assess, strategise, summary) with these assumptions:
+
+| Part | Assumption |
+|---|---|
+| Input tokens | 1,200 for the system prompt, plus the request's JSON input and its wire schema at 4 characters a token, plus 40 for the message frame |
+| Output tokens | The recorded answer at 4 characters a token, plus 800 as a margin for thinking |
+| Price | Haiku 5.5's list price of section 1, $0.10 input and $0.50 output per million tokens, read on 23 November 2026 |
+| Currency | 1 USD = 0.894 EUR, the four tools' shared rate (section 1) |
+
+A run comes to 16,000 to 17,000 input and about 7,000 output tokens: $0.0050 to $0.0053, or €0.0045 to €0.0047, in every scenario and both languages. The tile shows "< €0.01" below half a cent. `tests/unit.mjs` recounts the estimate with the prices written out by hand. The live run will not estimate: from 0.3.0 its meter adds up the usage the API reports.
+
+### 10.3 Where 0.2.0 differs from PLAN.md
+
+- The Vici patterns came first, as planned: the framework view with its item states and the risk matrix, merged into ViciDesign on 23 November 2026 (pull requests 26 and 27). `vici/` holds Vici's main at `2759b7a`, which also carries patterns the sibling tools added since: block states, the ring, the horizon strip and the drop zone.
+- There is no "Run it live" button yet. Start describes both modes, and the version note there says that live runs come with 0.3.0.
+- "Fictional company" labels the scenario picker in the step bar, so the label shows on every step, the decision included.
+- The legend names each state in one word: Entered, AI, Added, Challenged, Addressed.
+- In German the steps are Start, Ergänzen, Prüfen, Bewerten, Strategien and Fazit, so the step bar fits at 1280 px.
+- At heights up to 820 px, as on a 1280 × 720 projector, the SWOT's heading is hidden from sight but still read by screen readers, the inside and outside labels move to the side in short words, and items show their first line until opened. From 961 to 1440 px wide, the Method button shows its icon with a tooltip.
+- The key figures live in `js/tiles.js`. PLAN.md calls that file js/kpis.js, but `data/kpis.js` holds the sector KPIs, and two files of one name would mislead.

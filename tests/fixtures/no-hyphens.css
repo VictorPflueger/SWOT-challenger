@@ -1,0 +1,3 @@
+/* For tests/layout.mjs: hyphenation off, as in a Chromium without hyphenation dictionaries (the one CI
+   runs). Breaking a long German word then rests on soft hyphens and on the page's own wrapping rules. */
+*, *::before, *::after { -webkit-hyphens: manual !important; hyphens: manual !important; }
