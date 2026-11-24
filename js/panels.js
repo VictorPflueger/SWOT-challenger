@@ -12,7 +12,10 @@ import { STEP, itemsAt, sameChoice } from "./simulation.js";
 import { renderFacts } from "./facts.js";
 import { factsFor } from "./scenario.js";
 import { SECTORS } from "../data/kpis.js";
-import { riskMatrix, factorTable, ieMatrix, towsMatrix, issueNo, effectMark, effectBasis, kpiText } from "./matrices.js";
+import { riskMatrix, factorTable, ieMatrix, towsMatrix, issueNo, effectMark, estimateRows, kpiText } from "./matrices.js";
+
+/** A description list's flat rows (dt, dd, dt, dd; nested lists and nulls allowed) as [dt, dd] pairs. */
+const pairs = (rows) => { const flat = [rows].flat(Infinity).filter(Boolean); const out = []; for (let i = 0; i + 1 < flat.length; i += 2) out.push([flat[i], flat[i + 1]]); return out; };
 import { itemsChallenged } from "./engine.js";
 import { liveStartStory, waitStory, stopStory, checkControls, checkCount, researchNote, liveSummaryExtras, liveEntry, yourTurnLive } from "./live_panels.js";
 
@@ -280,7 +283,8 @@ function summary(ctx) {
                 h("div", {}, h("dt", {}, t("s.strat.first.label")), h("dd", {}, x.first_step)),
                 h("div", {}, h("dt", {}, t("s.strat.owner.label")), h("dd", {}, x.owner)),
                 h("div", {}, h("dt", {}, t("s.strat.time.label")), h("dd", {}, x.time_to_impact)),
-                effectBasis(x, lang) ? h("div", {}, h("dt", {}, t("p.estimate")), h("dd", {}, effectBasis(x, lang))) : null))))
+                // The estimate, what the Strategist rests it on and how sure it is, each a line of its own.
+                ...pairs(estimateRows(x, lang)).map(([dt, dd]) => h("div", {}, dt, dd))))))
             : h("p", { class: "chosen__none" }, t("s.sum.none")),
           ...(ctx.live ? liveSummaryExtras(ctx) : [
             h("div", { class: "sum-live" }, h("p", { class: "sum-live__q" }, t("s.sum.live.next")), liveEntry(ctx.handlers.enterLive, { sub: false })),

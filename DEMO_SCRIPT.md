@@ -11,7 +11,7 @@ Version 1.0.0. The English script first, then the same in German.
 | Figure | What it shows | In the demo |
 |---|---|---|
 | At stake a year | The expected cost of the issues the challenge priced, if nothing changes | €4.9m on 5 of 6 issues, then €3.3m, with an upside of €700k a year |
-| Items challenged | How many items of the SWOT the challenge questions | 6 of 14, then 2 of them addressed now |
+| Items challenged | How many items of the SWOT the challenge questions | 6 of 14, then 2 of 6 addressed now |
 | Response to the market | The EFE score of Fred R. David's external factor evaluation; 2.50 is average | 1.60, then 2.55 |
 | Session cost | What a live run of this company costs | < €0.01, estimated, simulated run (the guide adds €0.08 on Thorough) |
 
@@ -65,7 +65,7 @@ The guide's last chapter, *Show it in five minutes*, with Arvento Drives. Play w
 | Kennzahl | Was sie zeigt | In der Vorführung |
 |---|---|---|
 | Jährlich auf dem Spiel | Die erwarteten Kosten der bezifferten Probleme, wenn nichts geschieht | 4,9 Mio. € bei 5 von 6 Problemen, dann 3,3 Mio. €, mit einer Chance von 700 Tsd. € jährlich |
-| Beanstandete Punkte | Wie viele Punkte der SWOT die Prüfung infrage stellt | 6 von 14, dann 2 davon jetzt bearbeitet |
+| Beanstandete Punkte | Wie viele Punkte der SWOT die Prüfung infrage stellt | 6 von 14, dann 2 von 6 bearbeitet |
 | Antwort auf den Markt | Der EFE-Wert der externen Faktorbewertung nach Fred R. David; 2,50 ist der Durchschnitt | 1,60, dann 2,55 |
 | Sitzungskosten | Was ein Live-Lauf dieses Unternehmens kostet | < 0,01 €, geschätzt, simulierter Lauf (der Leitfaden nennt 0,08 € für Gründlich) |
 

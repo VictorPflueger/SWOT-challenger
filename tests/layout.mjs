@@ -143,7 +143,7 @@ const six = JSON.parse(JSON.stringify(s2));
 for (const lang of ["en", "de"]) {
   six.answers[lang].strategise.strategies = long[lang].map((title, i) => ({
     id: `R${i + 1}`, type: "ST", title: title.slice(0, 90), items: ["s2", "t1"], issue: "I4", kind: "mitigate",
-    ratings: [{ item: "t1", to: 2 }], residual: [{ likelihood: 2, eur_year_low: 100000, eur_year_high: 300000 }], upside: [],
+    ratings: [{ item: "t1", to: 2 }], residual: [{ likelihood: 2, eur_year_low: 100000, eur_year_high: 300000, basis: lang === "en" ? "Most of the issue goes; some customers still leave" : "Das Problem schrumpft; einige Kunden gehen trotzdem", confidence: "medium" }], upside: [],
     effort: "M", time_to_impact: lang === "en" ? "About a year" : "Etwa ein Jahr", first_step: lang === "en" ? "Start with one customer" : "Mit einem Kunden beginnen", owner: lang === "en" ? "Head of service" : "Leitung Service", recommended: i < 2
   }));
 }

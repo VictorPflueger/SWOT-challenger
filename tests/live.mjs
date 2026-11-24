@@ -630,6 +630,12 @@ async function save() {
       check(s.step === 5 && s.adopted.length === first.length + 1 && s.live.status === "done" && p.fake.requests.length === sent, `${lang}: after the summary, Adopt takes a new choice (${first.join(", ")} to ${s.adopted.join(", ")}) without another request and opens the Summary`);
     }
     const chosenNow = (await state(p.page)).adopted;
+    // The Writer is not told the choice, so its text holds for the new one too (review, new problem A).
+    const writer = p.fake.requests.find((r) => r.step === "summary")?.req;
+    const writerInput = writer ? JSON.parse(writer.messages[0].content) : null;
+    check(writerInput && writerInput.strategies.length > 0 && writerInput.strategies.every((s) => !("chosen" in s)) && /say neither which nor how many strategies are chosen/.test(JSON.stringify(writer.system)), `${lang}: the Writer sees the strategies without the choice and is told to write for any choice`);
+    const followers = ["left", "upside", "ife.after", "efe.after", "zone.after"];
+    check(writerInput && followers.every((k) => writerInput.facts[k] === "follows the choice") && writerInput.facts.at_stake && writerInput.facts.at_stake !== "follows the choice", `${lang}: the facts that follow the choice reach the Writer without their values; the others with theirs (at stake ${writerInput?.facts.at_stake})`);
     check(await p.page.$("#btn-save-run") && (await text(p.page, "#btn-save-run")).includes(DICT[lang]["s.sum.save"]), `${lang}: the Summary of a live run offers "${DICT[lang]["s.sum.save"]}"`);
     const [download] = await Promise.all([p.page.waitForEvent("download"), p.page.click("#btn-save-run")]);
     const file = await readFile(await download.path(), "utf8");

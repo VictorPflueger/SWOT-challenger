@@ -169,6 +169,20 @@ export function effectBasis(s, lang, tr = t) {
   });
 }
 
+/**
+ * A strategy's estimate as rows of a description list: how code turns the range into the figure, what the
+ * Strategist rests the range on, and how sure it is (brief 5.10). null without a figure.
+ */
+export function estimateRows(s, lang, tr = t, label = "p.estimate") {
+  const r = s.residual || s.upside;
+  if (!r) return null;
+  return [
+    h("dt", {}, tr(label)), h("dd", {}, effectBasis(s, lang, tr)),
+    r.basis ? [h("dt", {}, tr("rp.issue.basis")), h("dd", { class: "ai-text" }, r.basis)] : null,
+    r.confidence ? [h("dt", {}, tr("rp.issue.confidence")), h("dd", {}, tr(`p.conf.${r.confidence}`))] : null
+  ];
+}
+
 /** A strategy's figure as the AI's estimate: lilac, with the AI mark, and said as an estimate to a screen reader. */
 export function effectMark(s, lang, cls = "tows-effect") {
   const text = effectText(s, lang);
@@ -194,7 +208,7 @@ export function towsMatrix({ run, lang, selection, onToggle, open }) {
         h("dt", {}, t("s.strat.effort.label")), h("dd", {}, t(`p.effort.${s.effort}`)),
         h("dt", {}, t("s.strat.pairs")), h("dd", {}, s.items.map((id) => text.get(id)).filter(Boolean).join("; ")),
         h("dt", {}, t("s.strat.ratings.label")), h("dd", {}, s.changes.map((c) => t("s.strat.rating", { item: text.get(c.item) || c.item, from: c.from, to: c.to })).join("; ")),
-        effectBasis(s, lang) ? [h("dt", {}, t("p.estimate")), h("dd", {}, effectBasis(s, lang))] : null);
+        estimateRows(s, lang));
     // The first step, the owner and the new ratings open under the card, from a small button beside its title.
     const info = h("button", { type: "button", class: "vc-icon-button vc-icon-button--sm tows-card__info", id: `info-${s.id}`, "aria-expanded": String(shown), "aria-controls": `more-${s.id}`, "aria-label": t("s.strat.more.label", { title: s.title }) }, icon(shown ? "chevron-up" : "chevron-down"));
     info.addEventListener("click", () => {

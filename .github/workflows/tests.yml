@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: VictorPflueger/ViciDesign
-          ref: 3b586948021ac867bdd8f0e3ca8d12d7676c7349
+          ref: 818718cd160b7b302fb4a2414da2c69768ff4bfb
           path: ViciDesign
       # The Prototype Ideator at the commit whose reader the handoff file was built for: the handoff and
       # report suites read every file with its js/handoff.js.
@@ -79,7 +79,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: VictorPflueger/ViciDesign
-          ref: 3b586948021ac867bdd8f0e3ca8d12d7676c7349
+          ref: 818718cd160b7b302fb4a2414da2c69768ff4bfb
           path: ViciDesign
       # The Prototype Ideator at the commit whose reader the handoff file was built for: the handoff and
       # report suites read every file with its js/handoff.js.

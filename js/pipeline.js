@@ -23,6 +23,7 @@ import { answerProblems, schemaProblems } from "./guards.js";
 import { toWire } from "./wire.js";
 import { SCHEMAS, REQUESTS } from "../schemas/swot.js";
 import { assemble, factsFor } from "./scenario.js";
+import { CHOICE_FACTS, FOLLOWS_CHOICE } from "./facts.js";
 import { searchedUrls, deferredSearches, submissions, sortSignals, refusalFor, acceptanceFor, REMINDER, MAX_SCOUT_REQUESTS } from "./scout.js";
 
 const LETTER = { strengths: "s", weaknesses: "w", opportunities: "o", threats: "t" };
@@ -231,7 +232,9 @@ export function createLiveRun({ recording, settings: initialSettings, capEur: in
 
     async summary({ chosen, zoneName }) {
       const r = current();
-      const facts = factsFor(r, chosen, lang, zoneName);
+      // The facts that follow the choice go to the Writer without their values: it cites them, and code fills
+      // them for whatever choice the person makes, before or after the summary (review, new problem A).
+      const facts = Object.fromEntries(Object.entries(factsFor(r, chosen, lang, zoneName)).map(([k, v]) => [k, CHOICE_FACTS.includes(k) ? FOLLOWS_CHOICE : v]));
       const evidence = { titles: r.issues.flatMap((i) => i.evidence.map((e) => e.title)), urls: rec.sources.map((s) => s.url) };
       const result = await structured("summary", () => ({ facts: new Set(Object.keys(facts)), evidence }), { chosen, facts });
       answers().summary = result.answer;

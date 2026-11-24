@@ -225,7 +225,7 @@ try {
       const after = s2.was === money(f.stake.value, lang) && s2.main === money(g.left, lang)
         && (g.upside > 0 ? s2.note === t(lang, "p.kpi.stake.after.upside", { upside: money(g.upside, lang) }) : s2.note === t(lang, "p.kpi.stake.after"))
         && e2.was === score(f.efe.before.value, lang) && e2.main === score(g.efe.after.value, lang)
-        && i2.note === tn(lang, "p.kpi.items.addressed", addressedCount) && addressedCount > 0 && gridAddressed >= addressedCount;
+        && i2.note === tn(lang, "p.kpi.items.addressed", addressedCount, { of: f.items.challenged }) && addressedCount > 0 && gridAddressed >= addressedCount;
       check("TILES", after, `${id} in ${lang === "en" ? "English" : "German"}: after the decision, ${s2.was} is struck through beside ${s2.main}, ${e2.was} beside ${e2.main}, and ${i2.note}`);
       await context.close();
     }

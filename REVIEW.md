@@ -2,7 +2,7 @@
 
 Version 1.0.0. Every file this tool took from Vici or a sister prototype, how and why, then the three reviews of the release: an agent that did not build the tool, the design review on the running tool and Vici's partner review. PLAN.md, section 2.2, is the reuse map the plan set out; this list holds what the repository carries now. The sources:
 
-- ViciDesign at `3b58694`, Victor's design system on `main` (v1.0.0)
+- ViciDesign at `818718c`, Victor's design system on `main` (v1.0.0)
 - the Data Quality Agent 2.2.0 at `831f050` (DQ in PLAN.md): the presenter, the shared Vici tests and the workflows
 - the Sovereignty Assessment 2.0.0 at `35c0dea` (SA): the bilingual build, the language and documents tests, the live client's first source
 - the Prototype Ideator at `532e0f5`: the first of the set to merge the shared live client, and the PDF text reader
@@ -16,10 +16,10 @@ Reviewer: Claude Opus 5.5, an agent that did not build the tool, on 24 November 
 |---|---|---|---|
 | 1 | High | With research on, a run could pass its budget cap: the worst case of the Scout's request left out the search results, which the API bills as input tokens, so a run with a €0.10 cap ended at €0.1074 | Fixed: every worst case adds 20 % to its own input and 12,000 tokens a search, the Haiku check against 100,000 tokens too; the Scout asks for as many searches as fit, or skips research with a note. Tested at €0.15 on Thorough and €0.05 on Balanced |
 | 2 | High | A fictional company filled in for a demo lost its fiction label in a live run: the screens, the report and the handoff file called it real | Fixed: the step bar, the report's cover and About this report, the handoff file and the saved run say it is fictional; the saved run's contract takes true or false |
-| 3 | High | A strategy's euro figure, the Strategist's estimate, showed as a plain number, without the AI mark and without what it rests on | Fixed: lilac with the AI mark on the cards, the table and the Summary, and in the details, the Summary and the report a sentence on what it rests on: the Strategist's range and likelihood and how code turns them into the figure. Not taken: a basis sentence of the Strategist's own in the contract, since the range and likelihood are what the figure rests on |
+| 3 | High | A strategy's euro figure, the Strategist's estimate, showed as a plain number, without the AI mark and without what it rests on | Fixed: lilac with the AI mark on the cards, the table and the Summary. Every range now carries the Strategist's basis and confidence, which the Strategy contract asks for, and the details, the Summary and the report show them with the range, the likelihood and how code turns them into the figure; the scenarios' 13 strategies have both in both languages |
 | 4 | High | At the live check the person types into an AI item without the "Public information only" line, and the edit reached the Red team unscanned | Fixed: the check panel says it; an edit that looks private gets a warning under the item, which does not block |
 | 5 | Medium | An issue the Analyst could not price reached the Prototype Ideator as €0, so its At stake said "on 6 of 6" where the tile said "on 5 of 6"; TECH_NOTES contradicted itself | Fixed: no euros (null) for such an issue; a test runs the Ideator's own sum against the tile for every scenario and choice; TECH_NOTES, section 12.4, corrected |
-| 6 | Medium | "N addressed now" under Items challenged counted every item a choice raises, challenged or not, while the handoff file counted challenged items | Fixed: the note counts the challenged items a choice addresses, as the file does (S2: 2, where it said 4); DEMO_SCRIPT and the tests follow |
+| 6 | Medium | "N addressed now" under Items challenged counted every item a choice raises, challenged or not, while the handoff file counted challenged items | Fixed: the note counts the challenged items a choice addresses, as the file does, and names their number (S2: "2 of 6 addressed now", where it said "4 addressed now"); DEMO_SCRIPT and the tests follow |
 | 7 | Medium | Printed from the dark theme with background graphics, every PDF page sat in a black frame | Fixed in Vici first (pull request 46, merged): in print the page takes the light scheme; Vici's print check and `tests/report.mjs` test it |
 | 8 | Medium | After a finished live run, Adopt these strategies did nothing for a new choice | Fixed: the new choice takes effect without another request, since the Writer's summary holds for any choice, and opens the Summary; the saved run holds it |
 | 9 | Medium | S1 was based in Hamburg and S3 left out heat, against the brief and the sister tools, unrecorded | Fixed: Bremen, and heat and car charging, recorded in DATA_SOURCES.md |
@@ -35,6 +35,22 @@ Reviewer: Claude Opus 5.5, an agent that did not build the tool, on 24 November 
 
 While checking these fixes, the keyboard suite learned to fail a focus behind the bar at the story's foot (WCAG 2.2, 2.4.11) and found 16 such stops; the story column's scroll padding now follows the bar's height.
 
+The same agent then verified every fix the way it had found the problem: 17 verified, and finding 3 only partly, since the ranges still lacked a basis and a confidence of their own; they have both now, as the table says. It judged the second decision, impact and band left out of the file's residual, acceptable. It found four new problems of low severity, all fixed:
+
+| n | Severity | Finding | Status |
+|---|---|---|---|
+| 19 | Low | After a finished live run, a new choice kept the Writer's text, but the Writer had been told which strategies were chosen, so its text could describe the earlier choice ("the two chosen strategies") | Fixed: the Writer sees the strategies without the choice and is told to write for any choice and to cite the figures that follow the choice only as placeholders, as the recorded summaries do |
+| 20 | Low | The cap's promise with research on rests on 12,000 tokens of results a search, which no live run has measured, yet the dialog and README promised without that condition | Fixed: the research help and README say that each search counts as 12,000 tokens; TECH_NOTES, section 13.5, says the first live research runs should measure it |
+| 21 | Low | "2 addressed now" counted challenged items while the grid marked four items Addressed on the same screen | Fixed: the note names its count, "2 of 6 addressed now" |
+| 22 | Low | TECH_NOTES named brief 5.3 for the cost tile's words; they are in 5.5 | Fixed |
+
+A second verification found these five fixed and two more of low severity, both fixed:
+
+| n | Severity | Finding | Status |
+|---|---|---|---|
+| 23 | Low | The Writer still received the values of the facts that follow the choice, such as "Hold and maintain", and could restate them in words the fact audit cannot catch | Fixed: those five facts reach the Writer as "follows the choice", so it can cite them but not restate them; tested |
+| 24 | Low | In the report, a strategy's "AI estimate" tag was followed by a row labelled "AI estimate" | Fixed: the report labels that row "How it is worked out" |
+
 ## Design review
 
 /steve-jobs-design-review on the running tool, 24 November 2026, after the fixes of the independent review: played cold at 1280 × 720 in English from a first visit, with the guide opening by itself, through every step to the report; again at 1920 × 1080 in the dark theme in German; the live Start form empty and with a missing name, a live run that stopped for lack of credit, the live check with a warned edit, and the page opened from a file.
@@ -43,7 +59,7 @@ While checking these fixes, the keyboard suite learned to fail a focus behind th
 # Design Review: SWOT Challenger 1.0.0
 **Verdict:** INSANELY GREAT (score 10/10)
 **The One Thing:** What this SWOT gets wrong or leaves out, what that costs a year and which strategies answer it, in minutes and for cents.
-**Keeps its promise?** Yes. Before anything runs, the tiles show €4.9m a year at stake on 5 of 6 issues for Arvento Drives. Three presses (Start the agents, Challenge this SWOT, Adopt these strategies) reach the decision, which leaves €3.3m and lifts the response to the market from 1.60 to 2.55, the old values struck through, and "2 addressed now" says which of the 6 challenged items the choice reaches. Play takes 36 s in English and 35 s in German of the talk track's five minutes; a live run on Balanced is estimated at less than a cent, €0.08 on Thorough.
+**Keeps its promise?** Yes. Before anything runs, the tiles show €4.9m a year at stake on 5 of 6 issues for Arvento Drives. Three presses (Start the agents, Challenge this SWOT, Adopt these strategies) reach the decision, which leaves €3.3m and lifts the response to the market from 1.60 to 2.55, the old values struck through, and "2 of 6 addressed now" says how many of the 6 challenged items the choice reaches. Play takes 36 s in English and 35 s in German of the talk track's five minutes; a live run on Balanced is estimated at less than a cent, €0.08 on Thorough.
 **Cut list:** the company picker's fill on every change (choosing now changes nothing until Fill in); the large layout at 1440 × 900, which cut the SWOT's fields; the strategy lead's second line at 1280 × 720.
 **Fix list:** none open. Done this cycle: the picker, 1440 × 900, the live dialog at 1366 × 768, the targets under 24 px, the backdrop's fade under reduced motion, the focus behind the bar, and the 18 findings of the independent review.
 **Back of the fence:** the page opened from a file shows the guide over the loading screen, and its advice once the guide is closed; a stopped live run says what happened, what to do and what is kept, with the spend against the cap; an edit at the check that looks private is warned above its Edit button; the HTML report loads nothing a year from now; a PDF from the dark theme with background graphics prints on white; the PDF in Firefox and Safari carries the footer without page numbers, as Victor checked.
