@@ -10,7 +10,7 @@ Install Playwright once, globally:
 npm install -g playwright && npx playwright install chromium
 ```
 
-Vici's checks come from a checkout of ViciDesign beside this repository (`../ViciDesign`), or from the folder `VICI_DIR` names, at the commit `vici/README.md` names.
+Vici's checks come from a checkout of ViciDesign beside this repository (`../ViciDesign`), or from the folder `VICI_DIR` names, at the commit `vici/README.md` names. The handoff and report suites read every handoff file with the Prototype Ideator's own reader (`js/handoff.js`), from a checkout beside this repository (`../PrototypeIdeator`) or the folder `IDEATOR_DIR` names; CI checks it out at the commit the workflow names.
 
 A suite that needs Playwright finds it through `NODE_PATH`, `PLAYWRIGHT_MODULE` or `npm root -g`. `CHROME_PATH` points it at another Chromium.
 
@@ -20,9 +20,10 @@ A suite that needs Playwright finds it through `NODE_PATH`, `PLAYWRIGHT_MODULE` 
 node tests/run-all.mjs                  every suite
 node tests/run-all.mjs engine schemas   only those
 node tests/run-all.mjs --require-vici   Vici's checks must run
+node tests/run-all.mjs --require-ideator   the Prototype Ideator's reader must run
 ```
 
-Without a ViciDesign checkout, the suites that need one say so and pass, unless `--require-vici` is given or they run on GitHub Actions.
+Without a ViciDesign checkout, the suites that need one say so and pass, unless `--require-vici` is given or they run on GitHub Actions. Without the Prototype Ideator, the handoff and report suites skip its reader and say so, unless `--require-ideator` is given.
 
 ## What each suite proves
 
@@ -42,13 +43,15 @@ Without a ViciDesign checkout, the suites that need one say so and pass, unless 
 | `policy` | The exact policy, nothing loaded from elsewhere, nothing inline, storage only where allowed; Vici's `policyProblems` and `storageProblems` agree |
 | `hygiene` | No client, contact or meeting named in any published file |
 | `docs` | The documents exist, name real paths and sections, and date the prices; the workflow files parse |
-| `parity` | The shared files equal the sibling tools' copies, where a sibling has them |
+| `parity` | The shared files equal the sibling tools' copies, where a sibling has them; the PDF text reader (`tests/lib/pdf-text.mjs`) is the Prototype Ideator's |
+| `handoff` | The handoff file of each scenario in both languages, with the recorded choice, none and all: the shared schema and its references, the engine's figures within 1e-9, strategies as responses with rate changes, no key, prompt or thinking, and the Prototype Ideator's reader; planted defects fail both checks |
 | `vici` | Vici's guide, byline, writing, AI notice and record-id checks on the page as served and rendered, and Vici's guide render check |
 | `smoke` | In Chromium: a first visit in English, the switch without a reload, one guide per language, the theme from the first paint, nothing kept, as Vici's `storedKeyProblems` confirms |
 | `presenter` | In Chromium: every scenario from Start to Summary in both languages, by click, key and address; Play's timing on a fake clock; the tiles answering first and after the decision; every item's state on every step (Vici's `frameworkProblems`); the risk matrix (`riskMatrixProblems`); the tables behind each matrix; the Method dialog |
-| `layout` | In Chromium at 1920 × 1080 and 1280 × 720, both themes and languages, every step of every scenario: nothing wider than the window, no text cut, no table scrolling sideways, every SWOT item in view, the bar in the window, every strategy card in full, a steady header; and the live screens: the Start form, the dialog whole at its first opening (no scrolling, the estimate in view) and its start button and the AI notice in view, the wait, the check, an error, Run it live in the step bar |
+| `layout` | In Chromium at 1920 × 1080 and 1280 × 720, both themes and languages, every step of every scenario: nothing wider than the window, no text cut, no table scrolling sideways, every SWOT item in view, the bar in the window, every strategy card in full, a steady header, the report the Summary opens with Save as PDF in view; and the live screens: the Start form, the dialog whole at its first opening (no scrolling, the estimate in view) and its start button and the AI notice in view, the wait, the check, an error, Run it live in the step bar |
 | `hexagon` | Nothing round, in the files and on the rendered page in both themes |
 | `live` | In Chromium against the stand-in: every request's model, effort, thinking, schema and headers for each setting; one repair, then a stop; Abort; the cap and the meter; each API error in words, with the retries of brief 5.8; the dialog (Vici's `liveDialogProblems`, the box, the frame, the private-data warning); research with pause_turn, refused URLs and web search switched off; the person's check of the AI's items; nothing kept and the key nowhere; the screens nobody demos; Save run as simulation, accepted by the scenario rules and played back. `node tests/live.mjs ac10` runs one group |
+| `report` | In Chromium: Save as PDF prints each scenario in both languages with the footer on every page ("Created with SWOT Challenger", the address, "Built by Victor Pflüger · page x of y"; in German "Erstellt mit …", "Seite x von y"), the cover first, the summary on page 2, the sections in order, and with Vici's margin-box rule removed the check fails; the longest summary the contract allows flows on; the HTML file loads nothing, keeps the look and prints with the footer; the JSON file passes the schema and the Ideator's reader; the report and the handoff file carry the tiles' figures, which are the engine's; the Summary step; a live run's report (mode and model, the cutoff note, sources with their dates, a stop on every page, no key, nothing kept); the file names. `node tests/report.mjs pdf` runs one group |
 
 Every suite first proves on planted errors that its checks can fail.
 

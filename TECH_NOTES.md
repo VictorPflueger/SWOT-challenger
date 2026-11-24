@@ -1,6 +1,6 @@
 # Technical notes
 
-Version 0.3.0 (M3 Live), 24 November 2026. These notes record what was checked at source, with the date, and the decisions the code rests on. PLAN.md is the plan Victor approved on 23 November 2026, with the eleven cuts of its design review. Where the code says "brief 6.4", it means section 6.4 of Victor's build brief, which is not part of this repository.
+Version 0.4.0 (M4 Report), 24 November 2026. These notes record what was checked at source, with the date, and the decisions the code rests on. PLAN.md is the plan Victor approved on 23 November 2026, with the eleven cuts of its design review. Where the code says "brief 6.4", it means section 6.4 of Victor's build brief, which is not part of this repository.
 
 ## 1. Models and prices
 
@@ -197,5 +197,38 @@ The run is a recording in the scenario format, in its one language: the Recordin
 
 ### 11.12 Victor's first live runs
 
-Pending: G20 of the M3 ledger. Victor runs each setting once on a public company, saves the run as simulation and sends the file; its `run` part holds the minutes, the cents and each request's output tokens. The table goes here with the date, and the measured figures replace the estimate's assumptions in section 11.3.
+On 24 November 2026 Victor decided to skip the first live runs for now and to assume the live run works as intended; G20 of the M3 ledger was waived on his word. The estimate keeps the assumptions of section 11.3 until a run is measured. When Victor runs each setting once on a public company and saves the run as simulation, its `run` part holds the minutes, the cents and each request's output tokens, and the table goes here with the date.
+
+## 12. The report (0.4.0)
+
+Version 0.4.0 ends every run in a report: eight sections on A4 that code assembles from the run, previewed at the Summary step, and three downloads. `js/report.js` builds the report as DOM in the report's own language (a scenario's follows the page, a live run's its own); `js/report_view.js` holds the card at the Summary step, the report dialog and the downloads; `js/handoff.js` writes the file for the Prototype Ideator; `css/report.css` holds this tool's part of the look.
+
+### 12.1 The print layout and its footer
+
+The report uses Vici's report pattern (https://victorpflueger.github.io/ViciDesign/components/report.html), which the PESTEL Challenger built first and merged into ViciDesign on 24 November 2026 (pull request 40). `vici/` holds Vici's main at `64044bd`. The report's root carries the footer's words in its own language (`data-vc-footer-start`, `-end`, `-of`, and `data-vc-notice` when a live run stopped early); `Vici.report.prepare()` copies the report into a print container and writes the words into custom properties, which the margin boxes of the named page `vc-report` read, with `counter(page)` and `counter(pages)`. Chromium prints margin boxes from version 131; from 148 CSS can ask for them (`@supports at-rule(@bottom-left)`), and for the versions between, `prepare()` marks the copy from the browser's version, so a page never prints two footers. Save as PDF sets the page's title to the file's name while the print dialog is open, since browsers name the PDF after it, and Ctrl+P at the Summary step prints the report too. `tests/report.mjs` prints every scenario in both languages with Chromium and reads each page's text with `tests/lib/pdf-text.mjs`, the Prototype Ideator's reader copied unchanged at its commit `16fa6ad` (24 November 2026), which `tests/parity.mjs` keeps equal; with Vici's page rule taken out, the check fails.
+
+### 12.2 Firefox and Safari
+
+Without margin boxes, Vici's fixed footer prints at the foot of every page: "Created with SWOT Challenger" with the address and "Built by Victor Pflüger", without page numbers, and the print hint adds that the browser's own headers and footers give them. Pending: G15 of the M4 ledger. Victor prints one report in Firefox and one in Safari, and the result goes here with the date and the browser versions.
+
+### 12.3 The HTML file
+
+`Vici.report.html()` writes the report as one file: its markup, the style rules that reach it (Vici's light theme with them), the portrait as a data URI, a policy that loads nothing (`default-src 'none'; style-src 'unsafe-inline'; img-src data:`), no script, and the title as its one h1. The page's web fonts cannot travel under that policy, so the file names them and falls back to the reader's system fonts. A file has no script, so only a browser that answers `@supports at-rule()` keeps the fixed footer out of its print; an older Chromium prints both footers there. Each scenario's file weighs about 125 KB.
+
+### 12.4 The handoff file
+
+The file for the Prototype Ideator is `strategy-challenge/1` (brief 4.3), checked against the shared schema and its references before the page offers it, and read in the tests by the Ideator's own `js/handoff.js` at its commit `532e0f5`, which CI checks out for the handoff and report suites. The SWOT's quadrants are its areas; each strategy is a response pointing at its issue, its new ratings `rate` changes; the score is the response to the market (EFE, 1 to 4). `pressure` is "Items challenged": before, the challenged items; after, those the chosen strategies leave unaddressed; of all items entered and completed. An issue the Analyst could not price carries 0, 0 and 0 with "Not priced:" and the reason as its basis. A live run's country, entered as words, becomes its two-letter code through the region names in both languages, or ZZ when unknown. A source an issue cites keeps the title the issue gives it, in the report's list of sources and in the file. The file holds no key, prompt or thinking.
+
+### 12.5 Where 0.4.0 differs from PLAN.md
+
+- The Vici pattern came first, as planned, but from the PESTEL Challenger: its pull request went up as this milestone began, so this tool uses it unchanged rather than adding a second one. This tool's own draft stayed unpublished, and M4 needed no change in Vici.
+- PLAN.md's file tree has a module of its own for the print view and the HTML file. Vici's `report.print()` and `report.html()` do both, so `js/report.js` builds the report and `js/report_view.js` offers it.
+- The Summary panel shows a card with the report's first two pages, the three downloads and the link to the Prototype Ideator; "Download the report" in the bar, the bar's one primary action, opens the whole report in a dialog, with Save as PDF as the primary action there.
+- The issues open with the risk matrix and a list of the issues with their band and expected euros, before the blocks the brief lists.
+- The TOWS matrix shows every strategy in its cell in one line, the chosen ones marked, and the chosen ones in full below it.
+- Where the company stands opens its page with the IE matrix; the factor tables follow, with the ratings and weighted scores after the chosen strategies beside the old ones.
+- The report's tables head their columns in sentence case, a plainer print style that brief 9 allows, so a number column takes its word.
+- A summary at the longest the contract allows does not fit page two: it opens page two and flows on, and `tests/report.mjs` prints that case.
+- The leave-page warning (section 9) stands down once the report is downloaded or printed, as after Save run as simulation.
+- The live suites share the live run's helpers in `tests/lib/live-page.mjs`.
 

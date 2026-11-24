@@ -12,6 +12,7 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="vici/dist/vici.min.css">
   <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/report.css">
   <script src="vici/dist/vici-theme.js"></script>
   <script src="vici/dist/vici.js" defer></script>
   <script type="module" src="js/main.js"></script>
@@ -216,6 +217,16 @@
   </dialog>
 
   <!-- Method: the rules behind every figure, drawn by js/method.js in the page's language. -->
+  <!-- The report at full size, with its three downloads (js/report.js; PLAN.md, section 7). -->
+  <dialog class="vc-dialog report-dialog" id="report-dialog" aria-labelledby="report-dialog-title">
+    <header class="vc-dialog__header">
+      <h2 class="vc-dialog__title" id="report-dialog-title" data-i18n="rp.card.h">The report</h2>
+      <button type="button" class="vc-icon-button" data-vc-close aria-label="Close" data-i18n-attr="aria-label:p.close"><span class="vc-icon vc-icon--close" aria-hidden="true"></span></button>
+    </header>
+    <div class="report-tools" id="report-tools"></div>
+    <div class="vc-dialog__body report-dialog__body" id="report-body"></div>
+  </dialog>
+
   <dialog class="vc-dialog vc-dialog--lg method" id="method" aria-labelledby="method-title">
     <header class="vc-dialog__header">
       <h2 class="vc-dialog__title" id="method-title" data-i18n="m.title">Method</h2>
@@ -276,8 +287,8 @@
           <li><strong>Point at the key figures.</strong> <span class="vc-guide__say">“Before anything runs, the case is on the table: <span data-fig="stake">€4.9m on 5 of 6 issues</span> at stake a year.”</span> <span class="vc-guide__time">1 min</span></li>
           <li><strong>Press Start the agents.</strong> <span class="vc-guide__say">“The team wrote this SWOT. Lilac marks what the AI added.”</span> <span class="vc-guide__time">1 min</span></li>
           <li><strong>Press Challenge this SWOT.</strong> <span class="vc-guide__say">“Red marks <span data-fig="challenged">6 of 14</span> items, and a threat nobody listed joins the SWOT.”</span> <span class="vc-guide__time">1 min</span></li>
-          <li><strong>Keep the two strategies ticked and press Adopt these strategies.</strong> <span class="vc-guide__say">“The response to the market rises from <span data-fig="efe.before">1.60</span> to <span data-fig="efe.after">2.55</span>, past the average, and <span data-fig="left">€3.3m</span> a year is left at stake.”</span> <span class="vc-guide__time">1.5 min</span></li>
-          <li><strong>Read the summary.</strong> <span class="vc-guide__say">“The AI wrote the words; every figure in them comes from the code.”</span> <span class="vc-guide__time">0.5 min</span></li>
+          <li><strong>Keep the two strategies ticked and press Adopt these strategies.</strong> <span class="vc-guide__say">“The response to the market rises from <span data-fig="efe.before">1.60</span> to <span data-fig="efe.after">2.55</span>, past the average, and <span data-fig="left">€3.3m</span> a year is left at stake.”</span> <span class="vc-guide__time">1 min</span></li>
+          <li><strong>Read the summary, then press Download the report.</strong> <span class="vc-guide__say">“The AI wrote the words; every figure in them comes from the code. The report takes it all with you, with the footer on every page.”</span> <span class="vc-guide__time">1 min</span></li>
         </ol>
       </section>
     </div>
@@ -340,8 +351,8 @@
           <li><strong>Auf die Kennzahlen zeigen.</strong> <span class="vc-guide__say">„Bevor etwas läuft, liegt der Fall auf dem Tisch: jährlich <span data-fig="stake">4,9 Mio. € bei 5 von 6 Problemen</span> auf dem Spiel.“</span> <span class="vc-guide__time">1 min</span></li>
           <li><strong>Agenten starten drücken.</strong> <span class="vc-guide__say">„Diese SWOT hat das Team geschrieben. Lila zeigt, was die KI ergänzt hat.“</span> <span class="vc-guide__time">1 min</span></li>
           <li><strong>Diese SWOT prüfen drücken.</strong> <span class="vc-guide__say">„Rot markiert <span data-fig="challenged">6 von 14</span> Punkten, und ein Risiko, das niemand genannt hatte, kommt hinzu.“</span> <span class="vc-guide__time">1 min</span></li>
-          <li><strong>Die zwei angehakten Strategien lassen und Diese Strategien übernehmen drücken.</strong> <span class="vc-guide__say">„Die Antwort auf den Markt steigt von <span data-fig="efe.before">1,60</span> auf <span data-fig="efe.after">2,55</span>, über den Durchschnitt, und jährlich bleiben <span data-fig="left">3,3 Mio. €</span> auf dem Spiel.“</span> <span class="vc-guide__time">1,5 min</span></li>
-          <li><strong>Die Zusammenfassung lesen.</strong> <span class="vc-guide__say">„Die Worte schreibt die KI; jede Zahl darin kommt aus dem Code.“</span> <span class="vc-guide__time">0,5 min</span></li>
+          <li><strong>Die zwei angehakten Strategien lassen und Diese Strategien übernehmen drücken.</strong> <span class="vc-guide__say">„Die Antwort auf den Markt steigt von <span data-fig="efe.before">1,60</span> auf <span data-fig="efe.after">2,55</span>, über den Durchschnitt, und jährlich bleiben <span data-fig="left">3,3 Mio. €</span> auf dem Spiel.“</span> <span class="vc-guide__time">1 min</span></li>
+          <li><strong>Die Zusammenfassung lesen, dann Bericht herunterladen drücken.</strong> <span class="vc-guide__say">„Die Worte schreibt die KI; jede Zahl darin kommt aus dem Code. Der Bericht nimmt alles mit, mit der Fußzeile auf jeder Seite.“</span> <span class="vc-guide__time">1 min</span></li>
         </ol>
       </section>
     </div>

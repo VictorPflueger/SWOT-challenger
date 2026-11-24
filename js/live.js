@@ -435,6 +435,9 @@ export function createLive(presenter) {
     clearAll,
     askClear,
     saveRun,
+    // A report downloaded (PDF, HTML or the file for the Prototype Ideator) keeps the result as well, so the
+    // browser no longer asks before the tab closes, until the run changes again.
+    markSaved: () => { L.saved = true; },
     openDialog,
     refreshDialog: () => { if (D.dialog.open) { showWarning(); refreshDialog(); } },
     sectors: () => SECTORS,

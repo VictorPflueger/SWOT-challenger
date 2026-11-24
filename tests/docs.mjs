@@ -173,8 +173,8 @@ const controls = [
   plant("undated price table", (d) => { d["TECH_NOTES.md"] = d["TECH_NOTES.md"].replace(/Read on \d{1,2} \w+ \d{4}/, "Read"); }),
   plant("wrong KPI count", (d) => { d["TECH_NOTES.md"] = d["TECH_NOTES.md"].replace(`${KPIS.length} KPIs`, `${KPIS.length + 1} KPIs`); }),
   plant("citation of a missing plan section", (d) => { d["TECH_NOTES.md"] += "\nPLAN.md, section 99, says so.\n"; }),
-  plant("reference to a missing section of the notes", (d) => { d["TECH_NOTES.md"] += "\nAs said (section 12).\n"; }),
-  plant("code comment citing a missing section", (d, c) => { c["js/config.js"] = `${c["js/config.js"]}\n// TECH_NOTES §12\n`; }),
+  plant("reference to a missing section of the notes", (d) => { d["TECH_NOTES.md"] += "\nAs said (section 98).\n"; }),
+  plant("code comment citing a missing section", (d, c) => { c["js/config.js"] = `${c["js/config.js"]}\n// TECH_NOTES §98\n`; }),
   plant("suite with no row", (d) => { d["tests/README.md"] = d["tests/README.md"].replace(/^\| `engine` \|.*\n/m, ""); }),
   plant("workflow job name with a colon", (d, c) => { c[".github/workflows/tests.yml"] = c[".github/workflows/tests.yml"].replace(/name: Browser suites \(Playwright, Chromium,/, "name: Browser suites (Playwright, Chromium: with"); })
 ];
