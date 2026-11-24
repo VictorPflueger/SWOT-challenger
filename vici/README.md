@@ -1,7 +1,7 @@
 # Vici, copied into this prototype
 
 These files come unchanged from Vici, Victor Pflüger's design system
-(<https://victorpflueger.github.io/ViciDesign/index.html>): version **v1.0.0** as it stands on main at commit **`818718c`**
+(<https://victorpflueger.github.io/ViciDesign/index.html>): version **v1.0.0** as it stands on main at commit **`20e47d7`**
 (24 November 2026). That main already carries much of Vici 2.0: the How it works guide (`vc-guide`), the
 2.0 byline, the key-figure rules (answer first, `vc-stat__was`), Presenting step by step with Play, Your turn,
 `vc-attention`, the AI notice, short forms with their tooltip, the theme script for a strict security policy

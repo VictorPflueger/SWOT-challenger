@@ -2,7 +2,7 @@
 
 Version 1.0.0. Every file this tool took from Vici or a sister prototype, how and why, then the three reviews of the release: an agent that did not build the tool, the design review on the running tool and Vici's partner review. PLAN.md, section 2.2, is the reuse map the plan set out; this list holds what the repository carries now. The sources:
 
-- ViciDesign at `818718c`, Victor's design system on `main` (v1.0.0)
+- ViciDesign at `20e47d7`, Victor's design system on `main` (v1.0.0)
 - the Data Quality Agent 2.2.0 at `831f050` (DQ in PLAN.md): the presenter, the shared Vici tests and the workflows
 - the Sovereignty Assessment 2.0.0 at `35c0dea` (SA): the bilingual build, the language and documents tests, the live client's first source
 - the Prototype Ideator at `532e0f5`: the first of the set to merge the shared live client, and the PDF text reader
