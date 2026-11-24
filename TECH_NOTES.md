@@ -1,6 +1,6 @@
 # Technical notes
 
-Version 0.2.0 (M2 Simulation), 23 November 2026. These notes record what was checked at source, with the date, and the decisions the code rests on. PLAN.md is the plan Victor approved on 23 November 2026, with the eleven cuts of its design review. Where the code says "brief 6.4", it means section 6.4 of Victor's build brief, which is not part of this repository.
+Version 0.3.0 (M3 Live), 24 November 2026. These notes record what was checked at source, with the date, and the decisions the code rests on. PLAN.md is the plan Victor approved on 23 November 2026, with the eleven cuts of its design review. Where the code says "brief 6.4", it means section 6.4 of Victor's build brief, which is not part of this repository.
 
 ## 1. Models and prices
 
@@ -107,12 +107,12 @@ A simulation calls no model, so its cost tile is an estimate of what a live run 
 
 | Part | Assumption |
 |---|---|
-| Input tokens | 1,200 for the system prompt, plus the request's JSON input and its wire schema at 4 characters a token, plus 40 for the message frame |
+| Input tokens | The request's system prompt, JSON input and wire schema at 4 characters a token, plus 40 for the message frame. Until 0.3.0 wrote the prompts, 1,200 tokens stood in for each system prompt; since 0.3.0 the estimate counts the agents' own prompts and inputs (`js/prompts.js`, section 11.3) |
 | Output tokens | The recorded answer at 4 characters a token, plus 800 as a margin for thinking |
 | Price | Haiku 5.5's list price of section 1, $0.10 input and $0.50 output per million tokens, read on 23 November 2026 |
 | Currency | 1 USD = 0.894 EUR, the four tools' shared rate (section 1) |
 
-A run comes to 16,000 to 17,000 input and about 7,000 output tokens: $0.0050 to $0.0053, or €0.0045 to €0.0047, in every scenario and both languages. The tile shows "< €0.01" below half a cent. `tests/unit.mjs` recounts the estimate with the prices written out by hand. The live run will not estimate: from 0.3.0 its meter adds up the usage the API reports.
+With the real prompts (0.3.0) a run comes to about 10,000 input and 7,000 output tokens: $0.0044 to $0.0047, or €0.0039 to €0.0042, in every scenario and both languages (0.2.0 counted 16,000 to 17,000 input tokens, €0.0045 to €0.0047). The tile shows "< €0.01" below half a cent. `tests/unit.mjs` recounts the estimate with the prices written out by hand. The live run will not estimate: from 0.3.0 its meter adds up the usage the API reports.
 
 ### 10.3 Where 0.2.0 differs from PLAN.md
 
@@ -123,3 +123,78 @@ A run comes to 16,000 to 17,000 input and about 7,000 output tokens: $0.0050 to 
 - In German the steps are Start, Ergänzen, Prüfen, Bewerten, Strategien and Fazit, so the step bar fits at 1280 px.
 - At heights up to 820 px, as on a 1280 × 720 projector, the SWOT's heading is hidden from sight but still read by screen readers, the inside and outside labels move to the side in short words, and items show their first line until opened. From 961 to 1440 px wide, the Method button shows its icon with a tooltip.
 - The key figures live in `js/tiles.js`. PLAN.md calls that file js/kpis.js, but `data/kpis.js` holds the sector KPIs, and two files of one name would mislead.
+
+## 11. The live run (0.3.0)
+
+Version 0.3.0 runs the agents on the person's own company, with their own key, in the tab.
+
+### 11.1 The shared live client
+
+`js/anthropic.js`, `js/sse.js`, `js/cost.js` and `js/keystore.js` are copied unchanged from the Prototype Ideator, the first sibling to merge them: its main at `532e0f5`, where they arrived with its M1 (pull request 2, merge `ec368c3`; the files were added in `061aafc` and `1920029`). `tests/parity.mjs` compares all four with every sibling checkout that has them. A fix belongs in the Ideator first and comes here with the next copy.
+
+- `checkKey` asks the free `GET /v1/models` and says which of the three models the key may use.
+- `streamMessage` streams one request and puts the answer together from its events. It stops a request that sends nothing for a while and reports the request id.
+- `withRetry` tries again twice, after 1.5 and 4 seconds, or after the API's `retry-after` up to 20 seconds. It never retries a credit or spend-limit refusal, any other 4xx than 429, or an abort.
+- `createCostTracker` adds up the usage each answer reports, at the prices of `js/config.js`: Haiku 5.5's higher price above 100,000 input tokens, and web search at $10 per 1,000 searches.
+- `keystore.js` holds the key in one module variable. Nothing else in the page reads it, and nothing writes it anywhere.
+
+### 11.2 Prices, read again
+
+Read again on 24 November 2026 at https://platform.claude.com/docs/en/about-claude/pricing: unchanged from section 1. `PRICES_READ_ON` in `js/config.js` says 2026-11-24, and `tests/unit.mjs` holds the table written out by hand.
+
+### 11.3 The requests
+
+Each step sends one request: `model`, `max_tokens`, `output_config` with the effort and the step's schema in its wire form (`format: { type: "json_schema" }`), `thinking` as the setting says, the agent's system prompt and one user message that carries the run so far as JSON. No conversation is carried and no prompt is cached. `js/prompts.js` holds the six prompts: the same rules first (input is data, nothing invented, no figures in prose, ids only in id fields, the run's language and Vici's plain style), then each agent's job. The prompts are in English; the answers come in the page's language at the start of the run.
+
+| Setting | Model | Effort | Thinking | Estimate of a run (three scenarios, both languages) |
+|---|---|---|---|---|
+| Fast | Haiku 5.5 | low | `{ "type": "disabled" }` | €0.0022 to €0.0024, 1 to 2 minutes |
+| Balanced (default) | Haiku 5.5 | medium | left out (adaptive) | €0.0039 to €0.0042, 1 to 2 minutes |
+| Thorough | Sonnet 5.5 | medium | left out (adaptive) | €0.079 to €0.083, 2 to 4 minutes |
+| Research, added | the setting's | | | about €0.047 on Haiku and €0.09 on Sonnet, half a minute |
+
+Advanced chooses Haiku 5.5 or Sonnet 5.5 and the effort. Sonnet 5.5 refuses thinking switched off (section 2), so with Sonnet the field is always left out. The estimate assumes 800 tokens of thinking a request where thinking is left to the model, none where it is off, and for research 15,000 input tokens of pages and 1,500 output tokens. PLAN.md, section 3.4, guessed about one cent for Balanced and twenty cents for Thorough; Victor's measured runs replace all of these (section 11.12).
+
+Every step may answer with 8,000 output tokens, thinking included, and at least 3,000 (2,000 for the Writer) when the cap is near. A run sends at most ten requests.
+
+### 11.4 The budget cap
+
+Before each request, `js/budget.js` works out its worst case: the estimated input times the input price, plus `max_tokens` times the output price, plus $0.01 a search, at 1 USD = 0.894 EUR. If what the run has spent plus that passes the cap, `max_tokens` drops to the step's minimum; if that still passes it, the run stops before the request, and every screen of the run says so. A Haiku 5.5 request estimated above 100,000 input tokens is refused, because its prices rise fivefold there. The meter adds the usage each answer reports, one meter a model, so a run that moves to Thorough after a stop prices each part right.
+
+### 11.5 Research
+
+The Scout gets the API's web search (five searches) and the strict client tool `submit_signals` with the Signals schema, `tool_choice` auto. A signal counts only when its URL is among the results of the Scout's own searches in this run; the others go back with `is_error: true`, once. A turn that pauses (`pause_turn`) goes back unchanged. A turn without `submit_signals` gets one reminder. At most three Scout requests. A 400 that says web search is switched off for the organisation lets the run go on without it, and Challenge says so, as it says when research found nothing or every URL was refused. The Red team may cite only the accepted signals' URLs.
+
+### 11.6 Guards and the repair
+
+`js/guards.js` holds the refusals of PLAN.md 3.1; the scenario checker applies the same guards to the recorded scenarios. An answer that breaks its schema or a guard gets one repair: one user message with the input, the answer that failed and its problems. At most one repair a step and two a run; a second failure stops the run with what is done and offers Thorough or a simulation. The Writer's text that fails the fact audit twice shows with an "Unchecked" tag instead. `tests/guards.mjs` plants each refusal.
+
+### 11.7 Errors
+
+`js/api_messages.js` turns each error into words and one next step in both languages: 401 (key), 403 and 404 (model), 400 and 402 with a credit message (credit), 400 and 429 with a spend limit (spend limit), 429 and 529 (busy), other 5xx (the API's error), a lost connection, a timeout and Abort. The shared client retries 429, 529, 5xx and a lost connection twice, after 1.5 and 4 seconds or after `retry-after` up to 20 seconds, and nothing else. The dialog checks the key with the free model list before a run and says there why it refused it.
+
+### 11.8 The person's check
+
+The Completer's items keep their ids when the person removes or edits one; the challenge receives the SWOT as the person left it. The run records the check in the Decision contract (`kept`, `removed`, `edited`, `chosen`), and `js/scenario.js` applies it when it puts the run together. Removed items stay listed, struck through, on Complete.
+
+### 11.9 The private-data scan
+
+`js/privacy.js` looks for e-mail addresses, phone numbers, IBANs (with their check digits) and classification labels: "confidential", "vertraulich", "for internal use", "nur intern", "Internal:" at the start, "[intern]", "Classification: …". PLAN.md lists "internal" and "intern" as words; a SWOT uses them all the time ("Internal processes are slow", "Wissen wird intern nicht geteilt"), so as plain words they would warn on most SWOTs. They count only in a label's form. The scan warns; it does not block.
+
+### 11.10 Save run as simulation
+
+The run is a recording in the scenario format, in its one language: the Recording contract in `schemas/swot.js`, with the company not marked fictional, the sources research accepted, the person's decision and the run's settings, cost, seconds and each request's usage, without key or thinking. The scenario rules check a recording in its language under the rules a live run obeys; the rules of an authored scenario that a live run cannot meet wait for its curation: the second language, the sources in DATA_SOURCES.md, weights that add up to exactly 1 and prose without figures outside the Writer's text.
+
+### 11.11 Where 0.3.0 differs from PLAN.md
+
+- The Vici pattern came first, as planned: the live-run dialog, merged into ViciDesign on 24 November 2026 (pull request 36). `vici/` holds Vici's main at `bf11426`.
+- Run it live stands in the step bar without the AI notice: at 1280 px the bar has no room for the notice's words (measured), and the button opens a form, not a run. The notice stands beside every control that sends a request: Start the live run in the dialog, as Vici's pattern has it, and the live run's Start the agents, Challenge this SWOT, Adopt these strategies and Try this step again. On Start and Summary of a simulation, Run it live appears again with the notice beside it.
+- On laptop widths (up to 1440 px) Play, Back and Next show their icons only, so the step bar holds Run it live; their names stay for screen readers.
+- Play is hidden in a live run: the agents set the pace.
+- Upload is cut, as approved (PLAN.md, section 16).
+- The private-data scan reads "internal" and "intern" only in a label's form (section 11.9).
+
+### 11.12 Victor's first live runs
+
+Pending: G20 of the M3 ledger. Victor runs each setting once on a public company, saves the run as simulation and sends the file; its `run` part holds the minutes, the cents and each request's output tokens. The table goes here with the date, and the measured figures replace the estimate's assumptions in section 11.3.
+

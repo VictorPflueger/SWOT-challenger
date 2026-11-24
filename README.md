@@ -6,40 +6,33 @@ A browser tool for SWOT analyses. A person names a company and enters what they 
 
 It is published at https://victorpflueger.github.io/SWOT-challenger/, as one of four tools built as a set: the Business Model Canvas, SWOT and PESTEL challengers and the Prototype Ideator, which turns their reports into prototype ideas.
 
-## What version 0.2.0 holds
+## What version 0.3.0 holds
 
-Version 0.2.0 is the simulation. Three fictional companies play a recorded run, step by step, in English and German, with no key and at no cost:
+Three fictional companies play a recorded run with no key and at no cost, and Run it live puts the same agents to work on your own company with your own Claude API key. Both run six steps in English and German: Start, Complete, Challenge, Assess (factor tables and IE matrix after Fred R. David), Strategise (the TOWS matrix after Heinz Weihrich, where you choose) and Summary.
 
-1. Start: the company and what its team entered.
-2. Complete: the Completer fills every field to three items or more, marked in lilac.
-3. Challenge: the Red team marks what is misfiled, unsupported, contradictory or missing, and places each issue on a risk matrix.
-4. Assess: the Analyst puts a euro range on each issue in the sector's own KPIs and scores the SWOT in factor tables after Fred R. David; the IE matrix shows where the company stands.
-5. Strategise: the Strategist fills the TOWS matrix after Heinz Weihrich, and you choose the strategies to adopt.
-6. Summary: the Writer's summary, with the figures of your choice.
+The key figures at the top answer first: what is at stake a year, the items challenged, the response to the market and the run's cost. The Method dialog explains every figure. Underneath are the engine, the data contracts and 115 sector KPIs in both languages.
 
-Play runs the steps on its own and stops wherever you act. The key figures at the top answer first: what is at stake a year, how many items the challenge questions, how well the company answers its market, and what a live run would cost. The Method dialog explains every method and figure, with a worked example.
+## A live run
 
-The foundations of 0.1.0 stay underneath: the engine (`js/engine.js`, `js/risk.js`), the data contracts (`schemas/`), a library of 115 sector KPIs in both languages (`data/kpis.js`), the security policy and the tests in CI.
+Run it live opens Start as a form for the company and what your team knows of its SWOT. Start the agents opens the dialog: your key, the setting (Fast and Balanced on Haiku 5.5, Thorough on Sonnet 5.5), research (off by default), a budget cap from €0.05 to €3, your promise to enter public information only, and an estimate: about half a cent on Balanced.
 
-PLAN.md says what comes next: the live run in 0.3.0, the report in 0.4.0 and the release in 1.0.0.
+The run waits for you twice: you keep, edit or remove the Completer's items, and you choose the strategies. While an agent works, its step shows the seconds and the cost against your cap; Abort keeps what is done. Code checks every answer, gives a failing one one more try and starts no request that could pass your cap. Save run as simulation downloads the run without your key.
+
+It sends what you enter from your browser to Anthropic's API (api.anthropic.com), under your own key and Anthropic's terms, and nowhere else. It keeps nothing: the key lives in one variable of this tab's memory, never in storage, a cookie, the address or a download, and is gone when you close or reload the tab or press Clear everything. The browser remembers only your theme and language.
+
+Public information only: never enter confidential, personal or otherwise protected data. Before a run the page looks for e-mail addresses, phone numbers, bank account numbers and labels such as "confidential", and asks you to remove them or confirm they are public.
 
 ## What is real and what is simulated
 
-The three companies are fictional, and so are their own figures. The laws, rules and market facts their agents cite are real: DATA_SOURCES.md lists each with its source and the date it was read. The euro ranges, weights and ratings are AI estimates in the story, structured judgements rather than measurements. Code computes every score and total from them.
-
-A simulation sends nothing anywhere. The live run, from 0.3.0, will run the agents on your company with your own Claude API key, from your browser to Anthropic's API and nowhere else.
-
-Nothing is kept. The browser remembers only your theme and language. Close the tab and everything else is gone.
-
-Public information only: never enter confidential, personal or otherwise protected data.
+The three companies and their own figures are fictional; the facts their agents cite are real, and DATA_SOURCES.md dates each. Euro ranges, weights and ratings are AI estimates, structured judgements rather than measurements, in a simulation and a live run alike. Code computes every score and total.
 
 ## Run it
 
-Serve the folder with any static server and open it, for example `python3 -m http.server` and then http://localhost:8000. There is no build step and nothing to install. An address such as `?scenario=s2&step=4` opens a scenario at a step.
+Serve the folder with any static server, for example `python3 -m http.server`, and open http://localhost:8000. There is no build step. `?scenario=s2&step=4` opens a scenario at a step.
 
 ## Tests
 
-`node tests/run-all.mjs` runs every suite, and `node tools/check-scenarios.mjs` checks the three scenarios on their own. `tests/README.md` says what each suite proves and how to install Playwright for the browser suites. TECH_NOTES.md records the facts and decisions the code rests on, with the dates they were checked.
+`node tests/run-all.mjs` runs every suite; `tests/README.md` says what each proves. No test calls the real API. TECH_NOTES.md records the facts and decisions the code rests on, with their dates, and PLAN.md what comes next: the report in 0.4.0 and the release in 1.0.0.
 
 ## Author
 

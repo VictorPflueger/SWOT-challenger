@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   node:
-    name: Node.js suites (colours, icon, vici files, engine, schemas, KPIs, scenarios, fact audit, units, languages, policy, hygiene, docs, parity)
+    name: Node.js suites (colours, icon, vici files, engine, schemas, KPIs, scenarios, fact audit, units, guards, languages, policy, hygiene, docs, parity)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: VictorPflueger/ViciDesign
-          ref: 2759b7aa06eaf2eea11fc9f4f9578342535de7ce
+          ref: bf114266285334ebd7b74d7b5f92f9b3fdd78969
           path: ViciDesign
       - uses: actions/setup-node@v4
         with:
@@ -55,14 +55,14 @@ jobs:
       # has one; without it the generic checks run (tests/hygiene.mjs).
       - name: Node.js suites
         working-directory: app
-        run: node tests/run-all.mjs --require-vici tokens page-icon vici-files engine schemas kpis scenarios audit unit i18n policy hygiene docs parity
+        run: node tests/run-all.mjs --require-vici tokens page-icon vici-files engine schemas kpis scenarios audit unit guards i18n policy hygiene docs parity
         env:
           HYGIENE_TERMS: ${{ secrets.HYGIENE_TERMS }}
 
   browser:
-    name: Browser suites (Playwright, Chromium, with Vici's checks, the guide render, the presenter, the layout and nothing round)
+    name: Browser suites (Playwright, Chromium, with Vici's checks, the guide render, the presenter, the layout, nothing round and the live run against a stand-in)
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     needs: node
     steps:
       - uses: actions/checkout@v4
@@ -71,7 +71,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: VictorPflueger/ViciDesign
-          ref: 2759b7aa06eaf2eea11fc9f4f9578342535de7ce
+          ref: bf114266285334ebd7b74d7b5f92f9b3fdd78969
           path: ViciDesign
       - uses: actions/setup-node@v4
         with:
@@ -84,7 +84,7 @@ jobs:
       - run: npm install -g playwright@1.56.0 && npx playwright install --with-deps chromium
       - name: Browser suites
         working-directory: app
-        run: NODE_PATH="$(npm root -g)" node tests/run-all.mjs --require-vici vici smoke presenter layout hexagon
+        run: NODE_PATH="$(npm root -g)" node tests/run-all.mjs --require-vici vici smoke presenter layout hexagon live
         env:
           SWOT_TEST_OUT: ${{ runner.temp }}/swot-challenger-tests
       - if: always()

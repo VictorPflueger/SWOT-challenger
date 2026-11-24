@@ -66,6 +66,16 @@ const VALID = {
     entered: { strengths: [{ id: "s1", text: { en: "Quality", de: "Qualität" } }], weaknesses: [], opportunities: [], threats: [] },
     answers: { en: {}, de: {} }, recorded_choice: ["R1"]
   },
+  Recording: {
+    id: "live", source: "live", as_of: "2026-11-24", language: "de",
+    company: { name: "Beispiel GmbH", sector: "industrial_manufacturing", country: "Deutschland", description: { de: "Ein Hersteller von Antrieben" }, fictional: false },
+    sources: [],
+    entered: { strengths: [{ id: "s1", text: { de: "Qualität" } }], weaknesses: [], opportunities: [], threats: [] },
+    answers: { de: {} },
+    decision: { kept: ["s2"], removed: [], edited: [], chosen: [] },
+    recorded_choice: [],
+    run: { preset: "balanced", model: "claude-haiku-5-5", effort: "medium", thinking: "adaptive", research: false, cap_eur: 0.5, spent_eur: 0.0091, seconds: 84, requests: 5, summary_unchecked: false, audit: [] }
+  },
   RunEvent: { type: "answer", step: "challenge", at: 1200, data: {} },
   AuditEvent: { at: 1200, step: "challenge", agent: "red_team", model: "claude-haiku-5-5", effort: "medium", thinking: "adaptive", max_tokens: 8000, stop_reason: "end_turn", usage: { input_tokens: 2400, output_tokens: 900, web_search_requests: 0 }, problems: [], repaired: false }
 };
@@ -95,6 +105,9 @@ const BROKEN = [
   ["Summary", "two findings instead of three", (x) => { x.findings = ["One", "Two"]; }],
   ["Decision", "a strategy id that is no id", (x) => { x.chosen = ["strategy one"]; }],
   ["Scenario", "a company not marked fictional", (x) => { x.company.fictional = false; }],
+  ["Recording", "a company marked fictional", (x) => { x.company.fictional = true; }],
+  ["Recording", "texts in both languages", (x) => { x.entered.strengths[0].text = { en: "Quality", de: "Qualität" }; }],
+  ["Recording", "a key field in its run", (x) => { x.run.key = "sk-ant-…"; }],
   ["RunEvent", "a step that does not exist", (x) => { x.step = "review"; }],
   ["AuditEvent", "an effort the presets never send", (x) => { x.effort = "max"; }]
 ];

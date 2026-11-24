@@ -15,7 +15,8 @@ const SUITES = [
   { id: "kpis", what: "the sector KPI library: thirteen sectors, every KPI in both languages, no benchmark value", file: "tests/kpis.mjs", browser: false, vici: true },
   { id: "scenarios", what: "the three scenarios and their checker: both languages, four choices each, every defect the brief lists caught", file: "tests/scenarios.mjs", browser: false },
   { id: "audit", what: "the fact audit on golden texts in both languages, and every summary's placeholders rendered", file: "tests/audit.mjs", browser: false },
-  { id: "unit", what: "the session-cost estimate, its display, the Method dialog's worked example, what each step shows", file: "tests/unit.mjs", browser: false },
+  { id: "unit", what: "the estimate, the budget's worst case and the 100,000-token refusal, the retries, the meter, the private-data scan, the API's errors in words, the Method dialog's worked example", file: "tests/unit.mjs", browser: false },
+  { id: "guards", what: "every refusal of the live guards returns its message, and the recorded answers pass", file: "tests/guards.mjs", browser: false },
   { id: "i18n", what: "both languages: keys, placeholders, defaults, no sentence typed into the code", file: "tests/i18n.mjs", browser: false },
   { id: "policy", what: "security policy, nothing loaded from elsewhere, no inline script or style, what the browser keeps", file: "tests/policy.mjs", browser: false, vici: true },
   { id: "hygiene", what: "no client, contact or meeting named in any published file", file: "tests/hygiene.mjs", browser: false },
@@ -25,7 +26,8 @@ const SUITES = [
   { id: "smoke", what: "the page in Chromium: first visit in English, the switch without a reload, one guide per language, what the browser keeps", file: "tests/smoke.mjs", browser: true, vici: true },
   { id: "presenter", what: "the presenter in Chromium: every scenario from Start to Summary in both languages, Play, the address, the tiles, the grid, the Method dialog", file: "tests/presenter.mjs", browser: true, vici: true },
   { id: "layout", what: "the layout at 1920 × 1080 and 1280 × 720, both themes and languages, every step: nothing cut, nothing hidden, nothing scrolls sideways", file: "tests/layout.mjs", browser: true },
-  { id: "hexagon", what: "nothing round: the app's files, and the rendered page in both themes", file: "tests/hexagon.mjs", browser: true }
+  { id: "hexagon", what: "nothing round: the app's files, and the rendered page in both themes", file: "tests/hexagon.mjs", browser: true },
+  { id: "live", what: "the live run against a scripted stand-in for the API: requests, repair, Abort, cap and meter, errors and retries, the dialog, research, the check, nothing kept, the screens nobody demos, Save run as simulation", file: "tests/live.mjs", browser: true, vici: true }
 ];
 
 const REQUIRE = process.argv.includes("--require-vici");
