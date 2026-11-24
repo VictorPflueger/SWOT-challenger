@@ -6,7 +6,7 @@ A browser tool for SWOT analyses. A person names a company and enters what they 
 
 It is published at https://victorpflueger.github.io/SWOT-challenger/, as one of four tools built as a set: the Business Model Canvas, SWOT and PESTEL challengers and the Prototype Ideator, which turns their reports into prototype ideas.
 
-## What version 0.4.0 holds
+## What version 1.0.0 holds
 
 Three fictional companies play a recorded run with no key and at no cost, and Run it live puts the same agents to work on your own company with your own Claude API key. Both run six steps in English and German: Start, Complete, Challenge, Assess (factor tables and IE matrix after Fred R. David), Strategise (the TOWS matrix after Heinz Weihrich, where you choose) and Summary, which ends in the report.
 
@@ -36,7 +36,7 @@ Serve the folder with any static server, for example `python3 -m http.server`, a
 
 ## Tests
 
-`node tests/run-all.mjs` runs every suite, and `tests/README.md` says what each proves; none calls the real API. TECH_NOTES.md records the facts and decisions the code rests on, with their dates, and PLAN.md the way to 1.0.0.
+`node tests/run-all.mjs` runs every suite, and `tests/README.md` says what each proves; none calls the real API. TECH_NOTES.md records the facts and decisions the code rests on, with their dates; DESIGN.md, DEMO_SCRIPT.md and REVIEW.md cover the design, the demo and what was reused.
 
 ## Author
 

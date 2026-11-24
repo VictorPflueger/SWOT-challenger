@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: VictorPflueger/ViciDesign
-          ref: 64044bd3a4e41517cca148b410dea1ce5c89719e
+          ref: 3b586948021ac867bdd8f0e3ca8d12d7676c7349
           path: ViciDesign
       # The Prototype Ideator at the commit whose reader the handoff file was built for: the handoff and
       # report suites read every file with its js/handoff.js.
@@ -62,13 +62,13 @@ jobs:
       # has one; without it the generic checks run (tests/hygiene.mjs).
       - name: Node.js suites
         working-directory: app
-        run: node tests/run-all.mjs --require-vici --require-ideator tokens page-icon vici-files engine schemas kpis scenarios audit unit guards i18n policy hygiene docs parity handoff
+        run: node tests/run-all.mjs --require-vici --require-ideator tokens page-icon vici-files engine schemas kpis scenarios audit unit guards i18n policy hygiene docs lean parity handoff
         env:
           HYGIENE_TERMS: ${{ secrets.HYGIENE_TERMS }}
           IDEATOR_DIR: ${{ github.workspace }}/ideator
 
   browser:
-    name: Browser suites (Playwright, Chromium, with Vici's checks, the guide render, the presenter, the layout, nothing round, the live run against a stand-in and the report)
+    name: Browser suites (Playwright, Chromium, with Vici's checks, the guide render, the presenter, the layout, the keyboard and reduced motion, nothing round, the live run against a stand-in and the report)
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     needs: node
@@ -79,7 +79,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: VictorPflueger/ViciDesign
-          ref: 64044bd3a4e41517cca148b410dea1ce5c89719e
+          ref: 3b586948021ac867bdd8f0e3ca8d12d7676c7349
           path: ViciDesign
       # The Prototype Ideator at the commit whose reader the handoff file was built for: the handoff and
       # report suites read every file with its js/handoff.js.
@@ -99,7 +99,7 @@ jobs:
       - run: npm install -g playwright@1.56.0 && npx playwright install --with-deps chromium
       - name: Browser suites
         working-directory: app
-        run: NODE_PATH="$(npm root -g)" node tests/run-all.mjs --require-vici --require-ideator vici smoke presenter layout hexagon live report
+        run: NODE_PATH="$(npm root -g)" node tests/run-all.mjs --require-vici --require-ideator vici smoke presenter layout access hexagon live report
         env:
           SWOT_TEST_OUT: ${{ runner.temp }}/swot-challenger-tests
           IDEATOR_DIR: ${{ github.workspace }}/ideator

@@ -11,6 +11,7 @@ import { t } from "./i18n/index.js";
 import { h, icon, fill } from "./dom.js";
 import { reportNodes, thumbNodes, fileName } from "./report.js";
 import { handoffFor, handoffProblems } from "./handoff.js";
+import { redactSecrets } from "./keystore.js";
 
 export const IDEATOR_URL = "https://victorpflueger.github.io/PrototypeIdeator/";
 
@@ -48,6 +49,10 @@ export function createReportView({ dialog, tools, body, announce, onSaved = () =
 
   function build(ctx) {
     const el = reportNodes({ ...ctx, level: 3, id: "report" });
+    // Whatever is shaped like a key, typed into the form by mistake, is redacted on every page, so the
+    // PDF and the HTML file carry none (brief 5.3).
+    const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let n = walk.nextNode(); n; n = walk.nextNode()) if (n.data.includes("sk-ant-")) n.data = redactSecrets(n.data);
     current = { ctx, el };
     fill(body, el);
     fill(tools, actions("dialog"));
@@ -81,7 +86,7 @@ export function createReportView({ dialog, tools, body, announce, onSaved = () =
   function json() {
     if (!current) return;
     const c = current.ctx;
-    const file = handoffFor({ run: c.run, scenario: c.scenario, chosen: c.chosen, lang: c.lang, mode: c.mode, model: c.live?.settings.model ?? null, created: new Date(), country: c.run.company.country });
+    const file = handoffFor({ run: c.run, scenario: c.scenario, chosen: c.chosen, lang: c.lang, mode: c.mode, model: c.live?.settings.model ?? null, created: new Date(), country: c.run.company.country, unchecked: !!c.live?.unchecked });
     const problems = handoffProblems(file);
     // A file that fails its check is not offered; the page says why, where the button is, in words.
     const errors = ["rp-error", "rp-error-dialog"].map((x) => document.getElementById(x)).filter(Boolean);

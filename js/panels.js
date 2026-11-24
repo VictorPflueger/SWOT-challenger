@@ -12,7 +12,7 @@ import { STEP, itemsAt, sameChoice } from "./simulation.js";
 import { renderFacts } from "./facts.js";
 import { factsFor } from "./scenario.js";
 import { SECTORS } from "../data/kpis.js";
-import { riskMatrix, factorTable, ieMatrix, towsMatrix, issueNo, effectText, kpiText } from "./matrices.js";
+import { riskMatrix, factorTable, ieMatrix, towsMatrix, issueNo, effectMark, effectBasis, kpiText } from "./matrices.js";
 import { itemsChallenged } from "./engine.js";
 import { liveStartStory, waitStory, stopStory, checkControls, checkCount, researchNote, liveSummaryExtras, liveEntry, yourTurnLive } from "./live_panels.js";
 
@@ -90,6 +90,7 @@ function complete(ctx) {
     body: [
       h("section", { "aria-labelledby": "ai-items-title" },
         h("h2", { class: "panel-h", id: "ai-items-title" }, t("s.complete.ai")),
+        checking ? h("p", { class: "check-public", role: "note" }, icon("warning"), h("span", {}, t("s.live.public"))) : null,
         checking ? h("p", { class: "check-count", "aria-live": "polite" }, checkCount(ctx, added.length)) : null,
         h("ul", { class: "ai-items" }, added.map((it) => h("li", { class: ["ai-item", isRemoved(it) ? "is-removed" : ""], dataset: { id: it.id } },
           h("p", { class: "ai-item__head" }, ai(t("p.item.ai")), h("span", { class: "ai-item__quad" }, t(`q.${it.quadrant}`))),
@@ -274,11 +275,12 @@ function summary(ctx) {
           picked.length
             ? h("ol", { class: "chosen" }, picked.map((x) => h("li", { class: "chosen__item" },
               h("p", { class: "chosen__title" }, h("span", { class: "tows-cell__code" }, x.type), " ", x.title),
-              h("p", { class: "chosen__effect" }, effectText(x, lang)),
+              h("p", { class: "chosen__effect" }, effectMark(x, lang, "chosen__figure")),
               h("dl", { class: "chosen__facts" },
                 h("div", {}, h("dt", {}, t("s.strat.first.label")), h("dd", {}, x.first_step)),
                 h("div", {}, h("dt", {}, t("s.strat.owner.label")), h("dd", {}, x.owner)),
-                h("div", {}, h("dt", {}, t("s.strat.time.label")), h("dd", {}, x.time_to_impact))))))
+                h("div", {}, h("dt", {}, t("s.strat.time.label")), h("dd", {}, x.time_to_impact)),
+                effectBasis(x, lang) ? h("div", {}, h("dt", {}, t("p.estimate")), h("dd", {}, effectBasis(x, lang))) : null))))
             : h("p", { class: "chosen__none" }, t("s.sum.none")),
           ...(ctx.live ? liveSummaryExtras(ctx) : [
             h("div", { class: "sum-live" }, h("p", { class: "sum-live__q" }, t("s.sum.live.next")), liveEntry(ctx.handlers.enterLive, { sub: false })),

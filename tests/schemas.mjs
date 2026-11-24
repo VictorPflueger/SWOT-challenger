@@ -105,7 +105,7 @@ const BROKEN = [
   ["Summary", "two findings instead of three", (x) => { x.findings = ["One", "Two"]; }],
   ["Decision", "a strategy id that is no id", (x) => { x.chosen = ["strategy one"]; }],
   ["Scenario", "a company not marked fictional", (x) => { x.company.fictional = false; }],
-  ["Recording", "a company marked fictional", (x) => { x.company.fictional = true; }],
+  ["Recording", "a company whose fictional mark is a word", (x) => { x.company.fictional = "no"; }],
   ["Recording", "texts in both languages", (x) => { x.entered.strengths[0].text = { en: "Quality", de: "Qualität" }; }],
   ["Recording", "a key field in its run", (x) => { x.run.key = "sk-ant-…"; }],
   ["RunEvent", "a step that does not exist", (x) => { x.step = "review"; }],

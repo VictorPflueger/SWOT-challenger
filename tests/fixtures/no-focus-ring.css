@@ -1,0 +1,4 @@
+/* For tests/access.mjs only: takes every focus ring out of the page, so its keyboard check must fail. */
+*:focus, *:focus-visible, *:focus-within { outline: none !important; box-shadow: none !important; }
+*:focus-visible::before, *:focus-visible::after { opacity: 0 !important; }
+input[type="radio"]:focus-visible { background: none !important; }

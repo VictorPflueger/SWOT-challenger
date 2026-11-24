@@ -183,7 +183,8 @@ const AuditEvent = object({
 
 /**
  * A live run saved as a simulation ("Save run as simulation"): the Scenario format in the run's one
- * language, a real company (not fictional), the sources its research accepted, the person's check of the
+ * language, a real company or a fictional one filled in for a demo (fictional says which), the sources its
+ * research accepted, the person's check of the
  * AI's items and the strategies chosen, and how the run went: settings, cost, time and each request's
  * usage. The builder curates it into a recorded scenario: a second language, a fictional company, checks.
  */
@@ -192,7 +193,7 @@ const Recording = object({
   source: { const: "live" },
   as_of: { type: "string", format: "date" },
   language: { enum: ["en", "de"] },
-  company: object({ name: text(80), sector: { type: "string", pattern: "^[a-z_]+$" }, country: { type: "string", maxLength: 60 }, description: oneLanguage(140, 0), fictional: { const: false } }),
+  company: object({ name: text(80), sector: { type: "string", pattern: "^[a-z_]+$" }, country: { type: "string", maxLength: 60 }, description: oneLanguage(140, 0), fictional: { type: "boolean" } }),
   sources: list(object({ url: { type: "string", pattern: "^https://" }, read_on: { type: "string", format: "date" } }), 40),
   entered: object({ strengths: list(oneItem, 8), weaknesses: list(oneItem, 8), opportunities: list(oneItem, 8), threats: list(oneItem, 8) }),
   answers: { anyOf: [object({ en: { type: "object" } }), object({ de: { type: "object" } })] },

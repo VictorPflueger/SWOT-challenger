@@ -1,7 +1,8 @@
 // The documents of this version are complete and agree with the code:
 //   - README.md has at most 600 words, its sections, the version js/config.js names, the live address,
 //     the public-information sentence, the byline's two links and as many KPIs as data/kpis.js holds;
-//   - TECH_NOTES.md has its sections 1 to 10, and DATA_SOURCES.md its sections 1 to 5; section 1 dates the prices it lists ("Read on <date>", not
+//   - DESIGN.md, DEMO_SCRIPT.md (English and Deutsch) and REVIEW.md have their sections;
+//   - TECH_NOTES.md has its sections 1 to 13, and DATA_SOURCES.md its sections 1 to 5; section 1 dates the prices it lists ("Read on <date>", not
 //     after today) and lists the three models at the prices of the project instructions, read on
 //     23 November 2026; section 6 names as many KPIs and sectors as data/kpis.js holds;
 //   - tests/README.md has its sections and a row for every suite tests/run-all.mjs runs, and no other;
@@ -9,7 +10,8 @@
 //   - every section a published file cites exists ("TECH_NOTES.md, section 4", "TECH_NOTES §4",
 //     "PLAN.md, section 11", and a bare "section 5" inside TECH_NOTES.md), and every repository path a
 //     document names, in backticks or as a relative link, exists. PLAN.md names the files of 1.0.0, so
-//     only its sections count, not its paths; a path that starts with "../" points outside the document's
+//     only its sections count, not its paths, and so does REVIEW.md's list of the sisters' files this tool
+//     replaced; a path that starts with "../" points outside the document's
 //     folder (a sibling checkout, or a folder seen from Vici's stylesheet) and is not checked.
 //   - every workflow file parses as GitHub reads it: no plain value holds ": ".
 // Each check first fails on a planted error. Prints DOCS CONTROLS OK and DOCS OK.
@@ -33,8 +35,11 @@ const PRICES = {
 };
 const DOCS = {
   "README.md": { max: 600, sections: ["What version", "What is real and what is simulated", "Run it", "Tests", "Author"] },
-  "TECH_NOTES.md": { numbered: 10 },
+  "TECH_NOTES.md": { numbered: 13 },
   "DATA_SOURCES.md": { numbered: 5 },
+  "DESIGN.md": { sections: ["Who it is for", "The screen", "Colour", "Words and languages", "The figures", "The report"] },
+  "DEMO_SCRIPT.md": { sections: ["English", "Deutsch"] },
+  "REVIEW.md": { sections: ["Copied unchanged", "Adapted", "Planned, and taken another way", "Independent review", "Design review", "Partner review"] },
   "tests/README.md": { sections: ["Setup", "Run", "What each suite proves", "The private term list"] },
   "vici/README.md": {},
   "PLAN.md": { plan: true }
@@ -132,8 +137,10 @@ function problemsOf(docs, code) {
   }
 
   // Paths named.
-  for (const [f, t] of Object.entries(docs)) {
+  for (const [f, text] of Object.entries(docs)) {
     if (DOCS[f]?.plan) continue;
+    // REVIEW.md's "Planned, and taken another way" names files of the sisters that this tool replaced.
+    const t = f === "REVIEW.md" ? text.replace(/^## Planned, and taken another way[\s\S]*?(?=^## |(?![\s\S]))/m, "") : text;
     const base = path.dirname(path.join(APP_ROOT, f));
     const names = new Set();
     for (const m of t.matchAll(/`([^`\s]+)`/g)) names.add(m[1]);

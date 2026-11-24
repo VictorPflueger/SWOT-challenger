@@ -73,10 +73,11 @@ export function liveStartStory(ctx) {
             h("p", { class: "vc-help", id: "live-line-hint" }, t("s.live.line.hint"))))),
       h("div", { class: "live-fill" },
         h("label", { class: "vc-label", for: "live-fill" }, t("s.live.fill")),
-        h("select", { class: "vc-select vc-select--sm", id: "live-fill", "aria-describedby": "live-fill-hint", on: { change: (e) => { a.fill(e.target.value); } } },
-          h("option", { value: "", selected: true }, t("s.live.fill.pick")),
-          ...SCENARIOS.map((s) => h("option", { value: s.id }, s.name))),
-        h("p", { class: "vc-help", id: "live-fill-hint" }, t("s.live.fill.hint")))
+        h("select", { class: "vc-select vc-select--sm", id: "live-fill", "aria-describedby": "live-fill-hint", on: { change: (e) => a.choose(e.target.value) } },
+          h("option", { value: "", selected: !live.fill.choice }, t("s.live.fill.pick")),
+          ...SCENARIOS.map((s) => h("option", { value: s.id, selected: live.fill.choice === s.id }, s.name))),
+        h("button", { type: "button", class: "vc-button vc-button--secondary vc-button--sm", id: "live-fill-go", "aria-describedby": "live-fill-hint", on: { click: () => a.fill() } }, t("s.live.fill.go")),
+        h("p", { class: "vc-help", id: "live-fill-hint" }, live.fill.done ? t("s.live.fill.done", { company: live.fill.done }) : t("s.live.fill.hint")))
     ],
     bar: yourTurnLive(t("p.your.turn"), t("s.live.turn"), cta(t("s.live.cta"), a.start))
   };
@@ -229,6 +230,9 @@ const lowerFirst = (s, lang) => (lang === "en" ? s.replace(/^The /, "the ") : s.
 
 // ---- the check at Complete --------------------------------------------------------------------------
 
+/** The warning under an edited item that holds what is usually private (kinds as js/privacy.js names them). */
+export const checkWarning = (kinds) => t("s.check.warn", { what: kinds.map((k) => t(`d.warn.${k}`, { where: t("s.check.warn.in") })).join(", ") });
+
 /** An AI item's check controls: Edit and Remove, or Undo once removed; Save and Cancel while edited. */
 export function checkControls(item, ctx) {
   const { live } = ctx;
@@ -247,10 +251,14 @@ export function checkControls(item, ctx) {
       h("button", { type: "button", class: "vc-button vc-button--sm", on: { click: () => act.save(item.id, input.value) } }, t("s.check.save")),
       h("button", { type: "button", class: "vc-button vc-button--ghost vc-button--sm", on: { click: () => act.cancel(item.id) } }, t("s.check.cancel")));
   }
-  return h("p", { class: "check" },
+  // The warning sits above the buttons, so it is in view when the focus comes back to Edit.
+  const flags = c.flags.get(item.id);
+  const kept = c.kept?.id === item.id ? h("p", { class: "check-warn", id: `keep-${item.id}`, role: "note" }, icon("info"), h("span", {}, t(`s.check.keep.${c.kept.side}`))) : null;
+  return [flags?.length ? h("p", { class: "check-warn", id: `warn-${item.id}`, role: "note" }, icon("warning"), h("span", {}, checkWarning(flags))) : null, kept,
+    h("p", { class: "check" },
     c.edited.has(item.id) ? h("span", { class: "check__edited" }, t("s.check.edited")) : null,
     h("button", { type: "button", class: "vc-button vc-button--ghost vc-button--sm", id: `edit-${item.id}`, "aria-label": t("s.check.edit.label", { text }), on: { click: () => act.edit(item.id) } }, icon("edit"), t("s.check.edit")),
-    h("button", { type: "button", class: "vc-button vc-button--ghost vc-button--sm", id: `remove-${item.id}`, "aria-label": t("s.check.remove.label", { text }), on: { click: () => act.remove(item.id) } }, icon("trash"), t("s.check.remove")));
+    h("button", { type: "button", class: "vc-button vc-button--ghost vc-button--sm", id: `remove-${item.id}`, "aria-label": t("s.check.remove.label", { text }), on: { click: () => act.remove(item.id) } }, icon("trash"), t("s.check.remove")))];
 }
 
 /** How many AI items the person keeps and removes. */
@@ -266,7 +274,7 @@ export function researchNote(ctx) {
   const s = ctx.live.snap;
   if (!s || !s.settings.research || !s.research) return null;
   const n = ctx.run.signals.length;
-  const NOTE = { none: "r.none", off: "r.off", refused: "r.refused" };
+  const NOTE = { none: "r.none", off: "r.off", refused: "r.refused", cap: "r.cap" };
   const text = s.research === "found" ? tn("r.found", n) : t(NOTE[s.research]);
   return h("p", { class: ["research-note", s.research === "found" ? "" : "research-note--empty"] }, icon(s.research === "found" ? "search" : "info"), " ", text);
 }

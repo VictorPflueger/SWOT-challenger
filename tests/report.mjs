@@ -428,13 +428,20 @@ async function ui() {
     const dark = await openPage({ query: "scenario=s1&step=5", lang, theme: "dark" });
     const sheet = await dark.page.evaluate(() => ({ theme: document.documentElement.getAttribute("data-theme"), bg: getComputedStyle(document.querySelector("#report .vc-report__page")).backgroundColor }));
     check(sheet.theme === "dark" && sheet.bg === "rgb(255, 255, 255)", `${lang}: in the dark theme the report's sheets stay white`);
+    // Printed from the dark theme with background graphics on, the margins stay white too: in print the
+    // root takes the light scheme, whose canvas colour fills the margins (Vici pull request 46; finding 7).
+    const scheme = await dark.page.evaluate(() => getComputedStyle(document.documentElement).colorScheme);
+    await dark.page.emulateMedia({ media: "print" });
+    const printed = await dark.page.evaluate(() => getComputedStyle(document.documentElement).colorScheme);
+    await dark.page.emulateMedia({ media: null });
+    check(scheme === "dark" && printed === "light", `${lang}: printed from the dark theme, the page takes the light scheme (on screen ${scheme}, in print ${printed}), so no black frame surrounds the sheets`);
     await closePage(dark, `${lang} dark`);
 
-    // Start: the version note promises nothing for a later version.
+    // Start: the version note names the version config.js holds and promises nothing for a later one.
     const s = await openPage({ query: "scenario=s2", lang });
-    const start = await s.page.evaluate(() => ({ note: document.querySelector(".version-note")?.textContent.trim(), all: document.body.innerText }));
+    const start = await s.page.evaluate(() => ({ note: document.querySelector(".version-note")?.textContent.trim(), all: document.body.innerText, version: window.__swot.version }));
     const old = ["come with 0.4.0", "comes with version 0.4.0", "kommt mit 0.4.0", "kommt mit Version 0.4.0"];
-    check(start.note === T(lang, "p.version") && start.note.includes("0.4.0") && !old.some((x) => start.all.includes(x)), `${lang}: Start says "${start.note}", and no screen says the report comes later`);
+    check(start.note === T(lang, "p.version") && start.note.includes(start.version) && !old.some((x) => start.all.includes(x)), `${lang}: Start says "${start.note}" (version ${start.version}), and no screen says the report comes later`);
     await closePage(s, `${lang} Start`);
   }
   // After a live run, Save run as simulation stays under the downloads.
@@ -481,8 +488,12 @@ async function live() {
       const cover = await p.page.evaluate(() => Object.fromEntries([...document.querySelectorAll("#report .vc-report__meta dt")].map((dt) => [dt.textContent.trim(), dt.nextElementSibling?.textContent.trim()])));
       const setting = T(lang, "rp.model.live", { model: "Haiku 5.5", setting: T(lang, "d.preset.balanced"), research: T(lang, "rp.research.off") });
       check(cover[T(lang, "rp.meta.mode")] === T(lang, "rp.mode.live") && cover[T(lang, "rp.meta.model")] === setting, `${lang}: the cover names the mode and "${setting}"`);
+      // Arvento Drives, filled in for a demo, stays a fictional company in a live run: the cover, About this
+      // report and the file say so, and the step bar too.
       const fiction = await p.page.$$eval("#report .report-tags .vc-tag", (tags) => tags.map((x) => x.textContent.trim()));
-      check(fiction.includes(T(lang, "rp.ai")) && !fiction.includes(T(lang, "rp.fiction")), `${lang}: it says "${T(lang, "rp.ai")}" and does not call the company fictional`);
+      const about = await text(p.page, "#report .report-page--about");
+      const bar = await p.page.evaluate(() => { const el = document.getElementById("live-fiction"); return el && !el.hidden ? el.textContent.trim() : ""; });
+      check(fiction.includes(T(lang, "rp.ai")) && fiction.includes(T(lang, "rp.fiction")) && about.includes(T(lang, "rp.about.fiction.live")) && bar === T(lang, "p.scenario"), `${lang}: a live run of a fictional company filled in for a demo says "${T(lang, "rp.ai")}" and "${T(lang, "rp.fiction")}" on the cover, why in About this report, and "${bar}" in the step bar`);
       const method = await text(p.page, "#report .report-page--method");
       check(method.includes(T(lang, "rp.cutoff")) && /June 2026|Juni 2026/.test(method), `${lang}: with research off the sources give the knowledge-cutoff note (June 2026)`);
       // The browser asks before the tab closes while the result has not left the page, and no longer once the
@@ -497,7 +508,7 @@ async function live() {
       const jsonFile = await download(p.page, "#rp-json");
       check(![pages, html.text, jsonFile.text].some((x) => x.includes(MOCK_KEY) || /sk-ant-/.test(x)), `${lang}: the key is in none of the three files`);
       const jsonData = JSON.parse(jsonFile.text);
-      check(!handoffProblems(jsonData).length && jsonData.mode === "live" && jsonData.model === "claude-haiku-5-5" && jsonData.company.fictional === false && (!readHandoff || readHandoff(jsonData, { file: jsonFile.name }).ok), `${lang}: the live file passes its checks, names the model and calls the company real${readHandoff ? ", and the Ideator reads it" : ""}`);
+      check(!handoffProblems(jsonData).length && jsonData.mode === "live" && jsonData.model === "claude-haiku-5-5" && jsonData.company.fictional === true && (!readHandoff || readHandoff(jsonData, { file: jsonFile.name }).ok), `${lang}: the live file passes its checks, names the model and calls the filled-in company fictional${readHandoff ? ", and the Ideator reads it" : ""}`);
       const stored = await storageAfter(p.page);
       check(stored.local.every((k) => ["vc-theme", "swot.lang"].includes(k)) && stored.session.every((k) => k.startsWith("vc-guide")) && !stored.idb.length && !stored.caches.length && stored.cookie === "", `${lang}: after the downloads the browser keeps only the allowed keys (${[...stored.local, ...stored.session].join(", ") || "nothing"})`);
       await closeLivePage(p, `${lang} research off`, check);
@@ -566,6 +577,7 @@ async function names() {
   await p.page.click("#btn-live");
   await p.page.waitForSelector("#live-fill");
   await p.page.selectOption("#live-fill", "s2");
+  await p.page.click("#live-fill-go");
   await p.page.waitForFunction((name) => document.getElementById("live-name")?.value === name, SCEN.s2.company.name);
   await p.page.fill("#live-name", company);
   await p.page.click("#btn-cta");
@@ -581,6 +593,10 @@ async function names() {
   const j = await download(p.page, "#rp-json");
   const r = await printVia(p.page, "#rp-pdf");
   check(h.name === `${stem}.html` && j.name === `${stem}.json` && r.during.title === stem, `"${company}": the files are ${h.name}, ${j.name} and ${r.during.title}.pdf, umlauts and ß written out`);
+  // A company the person named is no fiction: no fiction tag on the cover, none in the step bar, and the file says real.
+  const tags = await p.page.$$eval("#report .report-tags .vc-tag", (els) => els.map((x) => x.textContent.trim()));
+  const barShown = await p.page.evaluate(() => !document.getElementById("live-fiction").hidden);
+  check(!tags.includes(T("de", "rp.fiction")) && !barShown && JSON.parse(j.text).company.fictional === false, `"${company}": the cover, the step bar and the file do not call the company fictional`);
   await closeLivePage(p, "umlauts", check);
 }
 

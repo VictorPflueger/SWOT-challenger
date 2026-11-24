@@ -116,6 +116,7 @@ export async function toDialog(page, { fill = "s2" } = {}) {
   await page.waitForSelector("#live-fill");
   if (fill) {
     await page.selectOption("#live-fill", fill);
+    await page.click("#live-fill-go");
     await page.waitForFunction((name) => document.getElementById("live-name")?.value === name, SCEN[fill].company.name);
   }
   await page.click("#btn-cta");

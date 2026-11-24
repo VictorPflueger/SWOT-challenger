@@ -1,13 +1,19 @@
-// The layout at the two sizes the tool is shown at, 1920 × 1080 and 1280 × 720, in both themes and both
-// languages, on every step of every scenario (Vici's "Presenting step by step"; PLAN.md, 5.1 and 5.2):
+// The layout from 1920 × 1080 down to 1280 × 720 (at 1920 × 1080, 1440 × 900, 1366 × 768 and 1280 × 720),
+// in both themes and both languages, on every step of every scenario (Vici's "Presenting step by step";
+// PLAN.md, 5.1 and 5.2; AC-14):
 //   - nothing scrolls wider than the window and nothing ends past its right edge;
 //   - no text is cut to an ellipsis, and no table scrolls sideways (with every "Show the numbers" open);
+//   - every target is at least 24 px in both directions (WCAG 2.2, 2.5.8): a link inside a sentence is
+//     exempt, as WCAG allows, and a checkbox's target is its label; the primary actions are at least
+//     40 px: the Your turn bar's button, Run it live in the step bar and in the story, and Start the live
+//     run (Victor's decision of 24 November 2026);
 //   - every field of the SWOT shows all its items without scrolling (at 1280 × 720 an item shows its
 //     first line until it is opened, as the brief asks);
 //   - the step bar's labels do not run into each other;
 //   - the bar under the story is in the window, and at Strategise every strategy card shows in full above
 //     it, also with six strategies in one cell and the longest titles the contract allows;
 //   - the header keeps its height when the decision moves the key figures;
+//   - the guide, as it opens on a first visit, and the Method dialog hold too;
 //   - at the Summary the report card holds, and the report the bar opens fits the window with Save as PDF
 //     in view;
 //   - a live run's screens hold as well: the Start form empty and filled, the live-run dialog (at its first
@@ -16,9 +22,11 @@
 //     and an error; "Run it live"
 //     is in view in the step bar on every step, and with the AI notice beside it on Start and Summary,
 //     where the story offers it (TECH_NOTES.md, section 11). The API is a scripted stand-in.
+// The target rules fail on planted examples first: a 20 px button and a primary action 36 px high.
 // Hyphenation is off (tests/fixtures/no-hyphens.css), as in a Chromium without hyphenation dictionaries,
 // so a layout that fits only because the browser hyphenates German fails here as it would in CI.
-// Every request to another host is blocked. Prints LAYOUT OK. Usage: node tests/layout.mjs
+// Every request to another host is blocked. Prints LAYOUT OK with what it covered.
+// Usage: node tests/layout.mjs
 import { APP_ROOT, launchBrowser, serveStatic, NETWORK_NOISE, MOCK_KEY } from "./lib/harness.mjs";
 import { createFakeClaude, json, CORS, MODELS_LIST } from "./lib/fake-claude.mjs";
 
@@ -27,12 +35,26 @@ const check = (ok, what) => results.push([!!ok, what]);
 const browser = await launchBrowser();
 const server = await serveStatic(APP_ROOT, 9300 + Math.floor(Math.random() * 300));
 
-/** What a screen shows that breaks the layout rules, measured in the page. */
-function measure() {
+/** The sizes, themes and languages, and the primary actions (at least 40 px). */
+// LAYOUT_ONLY="1280x720,dark,de" narrows the run for a quicker look; the success line then says so.
+const only = (process.env.LAYOUT_ONLY || "").split(",").filter(Boolean);
+const pick = (all, key) => (only.some((o) => all.map(key).includes(o)) ? all.filter((a) => only.includes(key(a))) : all);
+const SIZES = pick([[1920, 1080], [1440, 900], [1366, 768], [1280, 720]], ([w, h]) => `${w}x${h}`);
+const THEMES = pick(["light", "dark"], (t) => t);
+const LANGS = pick(["en", "de"], (l) => l);
+const PRIMARY = ["#btn-cta", "#btn-live-bar", "#btn-live", "#live-start"];
+
+/**
+ * What a screen shows that breaks the layout rules, measured in the page. Returns the problems, the
+ * header's height and the primary actions it measured.
+ */
+function measure(primary) {
   const out = [];
   const W = window.innerWidth;
   const H = window.innerHeight;
   if (document.scrollingElement.scrollWidth > W + 1) out.push(`the page scrolls sideways (${document.scrollingElement.scrollWidth} px)`);
+  // The page is one screen: only its panels scroll, so the header never leaves the screen (finding 15).
+  if (document.scrollingElement.scrollHeight > H + 1) out.push(`the page itself is ${document.scrollingElement.scrollHeight} px high and can scroll`);
   for (const el of document.querySelectorAll("body *")) {
     const cs = getComputedStyle(el);
     if (cs.display === "none" || cs.visibility === "hidden" || el.closest("dialog:not([open]), [hidden], #boot, .vc-visually-hidden, .vc-tooltip")) continue;
@@ -62,7 +84,52 @@ function measure() {
       if (r.top < 0 || r.bottom > top + 1) out.push(`the strategy card "${card.querySelector(".tows-card__title").textContent.slice(0, 30)}" is not in full above the bar`);
     }
   }
-  return { problems: out, header: Math.round(document.querySelector(".app-header").getBoundingClientRect().height) };
+  // Targets (WCAG 2.2, 2.5.8): every control a pointer can hit, at least 24 px in both directions.
+  const name = (el) => `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ""} "${(el.getAttribute("aria-label") || el.textContent || el.value || "").replace(/\s+/g, " ").trim().slice(0, 32)}"`;
+  // Hidden: in a closed dialog or popover, hidden, inert, or inside a closed details other than its summary.
+  const hidden = (el) => {
+    if (el.closest("dialog:not([open]), [hidden], [inert], #boot, .vc-visually-hidden, .vc-skip-link, [popover]:not(:popover-open)")) return true;
+    for (let d = el.closest("details:not([open])"); d; d = d.parentElement?.closest("details:not([open])")) {
+      const summary = d.querySelector(":scope > summary");
+      if (!summary || !summary.contains(el)) return true;
+    }
+    const cs = getComputedStyle(el);
+    return cs.display === "none" || cs.visibility === "hidden";
+  };
+  // A link inside a sentence: shown inline, with words of other text in the same block (WCAG's inline exception).
+  const inSentence = (a) => {
+    if (getComputedStyle(a).display !== "inline") return false;
+    let block = a.parentElement;
+    while (block && getComputedStyle(block).display.startsWith("inline")) block = block.parentElement;
+    if (!block) return false;
+    const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (a.contains(n) || n.parentElement.closest("a, button, .vc-visually-hidden")) continue;
+      if (/[\p{L}\p{N}]/u.test(n.textContent)) return true;
+    }
+    return false;
+  };
+  const TARGETS = 'button, a[href], input:not([type="hidden"]), select, textarea, summary, [role="button"], [role="link"], [role="tab"], [role="checkbox"], [role="radio"], [role="switch"], [role="menuitem"], [tabindex]:not([tabindex="-1"])';
+  for (const el of document.querySelectorAll(TARGETS)) {
+    if (hidden(el)) continue;
+    // A checkbox or radio is hit through its label.
+    const box = el.matches('input[type="checkbox"], input[type="radio"]') ? (el.closest("label") || (el.id && document.querySelector(`label[for="${CSS.escape(el.id)}"]`)) || el) : el;
+    const r = box.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+    if (el.matches("a") && inSentence(el)) continue;
+    if (r.width < 23.99 || r.height < 23.99) out.push(`a target under 24 px: ${name(el)} is ${Math.round(r.width * 10) / 10} × ${Math.round(r.height * 10) / 10} px`);
+  }
+  // The primary actions, at least 40 px.
+  const seen = [];
+  for (const sel of primary) {
+    const el = document.querySelector(sel);
+    if (!el || hidden(el)) continue;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) continue;
+    seen.push(sel);
+    if (r.width < 39.99 || r.height < 39.99) out.push(`a primary action under 40 px: ${name(el)} is ${Math.round(r.width * 10) / 10} × ${Math.round(r.height * 10) / 10} px`);
+  }
+  return { problems: out, header: Math.round(document.querySelector(".app-header").getBoundingClientRect().height), seen };
 }
 
 // A scenario with six strategies in one cell, each with a title as long as the contract allows (90
@@ -91,6 +158,32 @@ function inView(selector) {
   return r.width > 0 && r.height > 0 && r.left >= 0 && r.top >= 0 && r.right <= window.innerWidth + 1 && r.bottom <= window.innerHeight + 1;
 }
 
+/** Resolves once every finite animation on the page has run its time, or after `limit` ms. Runs in the page. */
+function settled(limit) {
+  return new Promise((ok) => {
+    const t0 = performance.now();
+    const done = () => document.getAnimations().every((a) => {
+      const t = a.effect?.getComputedTiming();
+      // A pulse that draws the eye (Vici's vc-attention, 4.2 s of shadow) moves nothing: it is not waited for.
+      return !t || !Number.isFinite(t.endTime) || t.endTime > 1500 || a.playState !== "running" || (a.currentTime ?? 0) >= t.endTime - 1;
+    });
+    const poll = () => (done() || performance.now() - t0 > limit ? ok() : setTimeout(poll, 30));
+    poll();
+  });
+}
+
+/** The primary actions measured on some screen, so their rule cannot pass by measuring none. */
+const seenPrimary = new Set();
+async function measured(page) {
+  // A dialog opens with a short scale and fade; the measure waits until every finite animation has run its
+  // time. Headless Chromium can leave an ended animation "running" until the next frame, so the wait reads
+  // the clock rather than the animation's promise.
+  await page.evaluate(settled, 3000);
+  const m = await page.evaluate(measure, PRIMARY);
+  for (const sel of m.seen) seenPrimary.add(sel);
+  return m;
+}
+
 /**
  * The live screens of one size, theme and language: Run it live in view on the simulation's Start and
  * Summary; the Start form empty and filled; the dialog; the wait; the check; an error. Returns problems.
@@ -100,7 +193,7 @@ async function liveViews(page, server, lang, api) {
   let header = null;
   const look = async (label) => {
     await page.addStyleTag({ url: "/tests/fixtures/no-hyphens.css" });
-    const m = await page.evaluate(measure);
+    const m = await measured(page);
     for (const p of m.problems) out.push(`live ${label}: ${p}`);
     // The tiles wait in one line, so the header keeps the simulation's height.
     if (header !== null && m.header !== header) out.push(`live ${label}: the header is ${m.header} px high, the simulation's ${header} px`);
@@ -110,7 +203,7 @@ async function liveViews(page, server, lang, api) {
     await page.goto(`${server.base}?guide=0&lang=${lang}&scenario=s2&step=${step}`);
     await page.waitForSelector('html[data-boot="ready"]', { timeout: 20000 });
     if (!(await page.evaluate(inView, "#btn-live-bar"))) out.push(`step ${step}: "Run it live" is not in view in the step bar`);
-    if (step === 0) header = (await page.evaluate(measure)).header;
+    if (step === 0) header = (await measured(page)).header;
     if (step !== 0 && step !== 5) continue;
     // A person scrolls the story to it; at Start it is in view from the first screen.
     await page.evaluate(() => document.getElementById("btn-live")?.closest(".live-entry")?.scrollIntoView({ block: "center" }));
@@ -122,6 +215,7 @@ async function liveViews(page, server, lang, api) {
   await page.waitForSelector("#live-name");
   await look("empty Start form");
   await page.selectOption("#live-fill", "s2");
+  await page.click("#live-fill-go");
   await page.waitForFunction(() => document.getElementById("live-name")?.value);
   await look("filled Start form");
   await page.click("#btn-cta");
@@ -158,11 +252,12 @@ async function liveViews(page, server, lang, api) {
 }
 
 let views = 0;
+let controlsDone = false;
 const headers = new Map();
 try {
-  for (const [w, h] of [[1920, 1080], [1280, 720]]) {
-    for (const theme of ["light", "dark"]) {
-      for (const lang of ["en", "de"]) {
+  for (const [w, h] of SIZES) {
+    for (const theme of THEMES) {
+      for (const lang of LANGS) {
         const context = await browser.newContext({ viewport: { width: w, height: h } });
         await context.addInitScript((t) => { try { localStorage.setItem("vc-theme", t); } catch { /* storage blocked */ } }, theme);
         // The API stand-in for the live screens: it answers from S2, holds a request while the wait is
@@ -186,21 +281,58 @@ try {
         page.on("console", (m) => { if (m.type() === "error" && !NETWORK_NOISE.test(m.text())) errors.push(m.text()); });
         const name = `${w} × ${h}, ${theme}, ${lang === "en" ? "English" : "German"}`;
         const problems = [];
+        // The guide, as it opens by itself on a first visit, and the Method dialog.
+        await page.goto(`${server.base}?lang=${lang}&scenario=s2`);
+        await page.waitForSelector('html[data-boot="ready"]', { timeout: 20000 });
+        await page.waitForSelector(`#guide-${lang}[open]`, { timeout: 10000 }).catch(() => problems.push("the guide did not open by itself"));
+        await page.addStyleTag({ url: "/tests/fixtures/no-hyphens.css" });
+        for (const p of (await measured(page)).problems) problems.push(`the guide: ${p}`);
+        await page.keyboard.press("Escape");
+        await page.waitForFunction((l) => !document.getElementById(`guide-${l}`).open, lang);
+        await page.click(".method-open");
+        await page.waitForSelector("#method[open]");
+        for (const p of (await measured(page)).problems) problems.push(`the Method dialog: ${p}`);
+        await page.keyboard.press("Escape");
+        await page.waitForFunction(() => !document.getElementById("method").open);
+        views += 2;
+        if (!controlsDone) {
+          // The controls: a 20 px button in the story fails the target rule, and the Your turn bar's
+          // button at 36 px fails the primary rule.
+          await page.goto(`${server.base}?guide=0&lang=${lang}&scenario=s2&step=1`);
+          await page.waitForSelector('html[data-boot="ready"]', { timeout: 20000 });
+          const planted = await page.evaluate(() => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.id = "planted-small";
+            b.textContent = "x";
+            Object.assign(b.style, { width: "20px", height: "20px", minHeight: "0", padding: "0" });
+            document.querySelector(".story-scroll").prepend(b);
+            const cta = document.getElementById("btn-cta");
+            cta.style.setProperty("--_h", "36px");
+            Object.assign(cta.style, { height: "36px", minHeight: "0", paddingBlock: "0" });
+            return { height: Math.round(cta.getBoundingClientRect().height) };
+          });
+          const m = await page.evaluate(measure, PRIMARY);
+          const small = m.problems.some((p) => p.startsWith("a target under 24 px: button#planted-small"));
+          const low = m.problems.some((p) => p.startsWith("a primary action under 40 px: button#btn-cta"));
+          check(small && low && planted.height === 36, `the controls: a planted 20 px button fails the target rule${small ? "" : " (it did not)"}, and the Your turn bar's button at ${planted.height} px fails the primary rule${low ? "" : " (it did not)"}`);
+          controlsDone = true;
+        }
         for (const id of ["s1", "s2", "s3"]) {
           for (let step = 0; step <= 5; step++) {
             await page.goto(`${server.base}?guide=0&lang=${lang}&scenario=${id}&step=${step}`);
             await page.waitForSelector('html[data-boot="ready"]', { timeout: 20000 });
             await page.addStyleTag({ url: "/tests/fixtures/no-hyphens.css" });
-            const m = await page.evaluate(measure);
+            const m = await measured(page);
             // Every table of numbers open too.
             await page.evaluate(() => { for (const d of document.querySelectorAll("details.numbers")) d.open = true; });
-            const open = await page.evaluate(measure);
+            const open = await measured(page);
             for (const p of new Set([...m.problems, ...open.problems])) problems.push(`${id} step ${step}: ${p}`);
             // At the Summary, the bar's action opens the report: its sheets fit the window, and Save as PDF is in view.
             if (step === 5) {
               await page.click("#btn-cta");
               await page.waitForSelector("#report-dialog[open]");
-              const d = await page.evaluate(measure);
+              const d = await measured(page);
               for (const p of d.problems) problems.push(`${id} the report: ${p}`);
               if (!(await page.evaluate(inView, "#rp-pdf-dialog"))) problems.push(`${id} the report: Save as PDF is not in view`);
               await page.keyboard.press("Escape");
@@ -218,11 +350,11 @@ try {
         await page.waitForSelector('html[data-boot="ready"]', { timeout: 20000 });
         await page.addStyleTag({ url: "/tests/fixtures/no-hyphens.css" });
         const cards = await page.$$eval(".tows-cell[data-type='ST'] .tows-card", (els) => els.length);
-        const six6 = await page.evaluate(measure);
+        const six6 = await measured(page);
         for (const p of six6.problems) problems.push(`six in one cell: ${p}`);
         if (cards !== 6) problems.push(`six in one cell: ${cards} cards in the cell`);
         await page.unroute("**/data/scenarios/s2.js");
-        check(!problems.length && !errors.length, `${name}: all 18 steps of the three scenarios, and six strategies in one cell${[...problems, ...errors].length ? `:\n      ${[...problems, ...errors].slice(0, 12).join("\n      ")}` : ""}`);
+        check(!problems.length && !errors.length, `${name}: the guide and the Method dialog, all 18 steps of the three scenarios with the report, and six strategies in one cell${[...problems, ...errors].length ? `:\n      ${[...problems, ...errors].slice(0, 12).join("\n      ")}` : ""}`);
         const live = await liveViews(page, server, lang, api);
         check(!live.length && !errors.length, `${name}: the live screens, Run it live, the dialog whole at its first opening and its start button with the AI notice in view${[...live, ...errors].length ? `:\n      ${[...live, ...errors].slice(0, 12).join("\n      ")}` : ""}`);
         await context.close();
@@ -231,6 +363,8 @@ try {
   }
   const moving = [...headers].filter(([, s]) => s.size > 1).map(([k, s]) => `${k} (${[...s].join(", ")} px)`);
   check(!moving.length, `the header keeps its height from Start to Summary${moving.length ? `; it moves at ${moving.join("; ")}` : ""}`);
+  const unseen = PRIMARY.filter((sel) => !seenPrimary.has(sel));
+  check(!unseen.length, `every primary action was measured on some screen${unseen.length ? `; never shown: ${unseen.join(", ")}` : ` (${PRIMARY.join(", ")})`}`);
 } finally {
   await server.close();
   await browser.close();
@@ -239,4 +373,5 @@ try {
 for (const [ok, what] of results) console.log(`${ok ? "PASS" : "FAIL"}  ${what}`);
 const failed = results.filter(([ok]) => !ok).length;
 if (failed) { console.log(`\n${failed} layout checks failed (${views} views).`); process.exit(1); }
-console.log(`\nAll ${results.length} layout checks passed on ${views} views.\nLAYOUT OK`);
+console.log(`\nAll ${results.length} layout checks passed on ${views} views.`);
+console.log(`LAYOUT OK: ${SIZES.length} sizes, ${THEMES.length} themes, ${LANGS.length} languages; targets at least 24 px, primary actions at least 40 px`);

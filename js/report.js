@@ -17,7 +17,7 @@ import { CELLS, ZONE, SIDE } from "./engine.js";
 import { figuresFor, factsFor, strategyEffect } from "./scenario.js";
 import { addressed, issuesOf, sourceOf, strategiesByType } from "./simulation.js";
 import { renderFacts } from "./facts.js";
-import { issueNo, kpiText } from "./matrices.js";
+import { issueNo, kpiText, effectBasis } from "./matrices.js";
 import { sourcesOf } from "./handoff.js";
 import { SECTORS } from "../data/kpis.js";
 import { STRATEGY_KINDS as KIND } from "../schemas/swot.js";
@@ -55,6 +55,8 @@ export function reportNodes(ctx) {
   const H = (n, attrs, ...children) => h(`h${Math.min(6, level + n)}`, attrs, ...children);
   const tr = (key, vars = null) => t(key, vars, lang);
   const stopped = mode === "live" && !!live?.stop;
+  // A scenario's company is fictional, and so is a live run's when it was filled in from one for a demo.
+  const fiction = mode !== "live" || !!run.company.fictional;
   const scored = run.factors.length > 0;
   const chosen = ctx.chosen || [];
   const f = scored ? figuresFor(run, chosen) : null;
@@ -88,7 +90,7 @@ export function reportNodes(ctx) {
       h("p", { class: "vc-report__subtitle" }, headline),
       h("p", { class: "report-tags" },
         h("span", { class: "vc-tag vc-tag--feature" }, tr("rp.ai")),
-        mode !== "live" ? h("span", { class: "vc-tag" }, tr("rp.fiction")) : null,
+        fiction ? h("span", { class: "vc-tag" }, tr("rp.fiction")) : null,
         stopped ? h("span", { class: "vc-tag vc-tag--danger" }, tr("rp.stopped")) : null)),
     h("dl", { class: "vc-report__meta" }, meta.map(([k, v]) => [h("dt", {}, k), h("dd", {}, v)])));
 
@@ -218,6 +220,7 @@ export function reportNodes(ctx) {
       h("dt", {}, tr("s.strat.time.label")), h("dd", {}, x.time_to_impact),
       h("dt", {}, tr("s.strat.effort.label")), h("dd", {}, tr(`p.effort.${x.effort}`)),
       h("dt", {}, tr(x.kind === "advantage" ? "s.strat.effect.upside" : "s.strat.effect.left")), h("dd", {}, strategyEffect(x) === null ? "" : [money(strategyEffect(x), lang), " ", aiTag()]),
+      strategyEffect(x) === null ? null : [h("dt", {}, tr("p.estimate")), h("dd", {}, effectBasis(x, lang, tr))],
       h("dt", {}, tr("s.strat.pairs")), h("dd", {}, x.items.map((i) => text.get(i)).filter(Boolean).join(" · ")),
       h("dt", {}, tr("s.strat.ratings.label")), h("dd", {}, x.changes.map((c) => tr("s.strat.rating", { item: text.get(c.item) || c.item, from: c.from, to: c.to })).join("; "))));
   const towsCell = (type) => h("section", { class: "report-tows__cell", dataset: { type }, "aria-labelledby": `${id}-tows-${type}` },
@@ -253,6 +256,7 @@ export function reportNodes(ctx) {
     else if (live.research === "off") researchNotes.push(tr("r.off"));
     else if (live.research === "refused") researchNotes.push(tr("r.refused"));
     else if (live.research === "none") researchNotes.push(tr("r.none"));
+    else if (live.research === "cap") researchNotes.push(tr("r.cap"));
   }
   const methodPage = page("method",
     heading("method", tr("rp.method.h")),
@@ -273,7 +277,7 @@ export function reportNodes(ctx) {
     heading("about", tr("rp.about.h")),
     h("p", {}, tr("rp.about.tool"), " ", h("a", { href: APP.url }, APP.url)),
     para("rp.about.made"),
-    mode !== "live" ? para("rp.about.fiction") : null,
+    fiction ? para(mode === "live" ? "rp.about.fiction.live" : "rp.about.fiction") : null,
     h("p", { class: "report-public" }, tr("s.live.public")),
     para("rp.about.generated"),
     h("p", { class: "vc-byline report-byline" },

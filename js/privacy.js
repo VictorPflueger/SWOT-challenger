@@ -1,5 +1,5 @@
 // The private-data warning before a live run (brief 5.10, AC-11): code looks for what is usually private
-// in what the person entered, such as e-mail addresses, phone numbers, IBANs and the words of a
+// in what the person entered, such as API keys, e-mail addresses, phone numbers, IBANs and the words of a
 // classification label ("confidential", "vertraulich", "for internal use", "nur intern"), and the dialog
 // asks them to remove it or confirm it is public. It warns; it does not block. A SWOT speaks of internal
 // and external factors all the time ("Internal processes are slow", "Wissen wird intern nicht geteilt"),
@@ -10,6 +10,8 @@ const EMAIL = /[\p{L}\p{N}._%+-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+/gu;
 // A phone number: a + and a country code, or a 0 and an area code, then at least six more digits in groups.
 const PHONE = /(?<![\p{L}\p{N}.,])(?:\+\d{1,3}[\s./-]?(?:\(0\)[\s./-]?)?\d{1,5}|\(?0\d{1,5}\)?)(?:[\s./-]?\d{2,}){2,}(?![\p{L}\p{N}])/gu;
 const IBAN = /\b[A-Z]{2}\d{2}(?:[ ]?[A-Z0-9]{4}){2,7}(?:[ ]?[A-Z0-9]{1,4})?\b/g;
+// An Anthropic API key, as js/keystore.js's redactSecrets() finds it.
+const KEY = /sk-ant-[A-Za-z0-9_-]{8,}/;
 const LABELS = [
   /\b(?:strictly\s+)?confidential\b/i,
   /\bfor\s+internal\s+use\b/i,
@@ -42,10 +44,11 @@ function ibanValid(raw) {
   return rest === 1;
 }
 
-/** What is usually private in one text: a list of kinds, each "email", "phone", "iban" or "label". */
+/** What is usually private in one text: a list of kinds, each "key", "email", "phone", "iban" or "label". */
 export function privateKinds(text) {
   const s = String(text ?? "");
   const kinds = new Set();
+  if (KEY.test(s)) kinds.add("key");
   if (s.match(EMAIL)) kinds.add("email");
   for (const m of s.matchAll(IBAN)) if (ibanValid(m[0])) kinds.add("iban");
   const withoutIban = s.replace(IBAN, " ");

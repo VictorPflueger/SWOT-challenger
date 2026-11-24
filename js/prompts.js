@@ -64,7 +64,7 @@ Your job:
 ${RULES}
 Your job:
 - Propose ${LIMITS.strategiesMin} to ${LIMITS.strategiesMax} strategies, numbered R1, R2 and so on. Each is SO, WO, ST or WT and pairs at least one internal item (a strength for S, a weakness for W) with at least one external item (an opportunity for O, a threat for T).
-- Each strategy answers one issue. SO and WO turn the issue into an advantage: give an upside, the euro range a year it could gain and its likelihood, and no residual. ST and WT mitigate it: give a residual, what would still be at risk a year with its likelihood, and no upside. A residual never exceeds what the issue put at stake.
+- Each strategy answers one issue. SO and WO turn the issue into an advantage: give an upside, the euro range a year it could gain and its likelihood, and no residual. ST and WT mitigate it: give a residual, what would still be at risk a year with its likelihood, and no upside. A residual never exceeds what the issue put at stake and is never more likely than the issue.
 - Give the new ratings the strategy would earn for the items it pairs, never lower than today's. A strength stays at 3 or 4 and a weakness at 1 or 2.
 - Give the effort (S, M or L), the time to impact, a concrete first step and an owner by role, never by name. Mark as recommended the strategies you would start with.
 - Prefer strategies a company of this size could start within a year.`,

@@ -119,7 +119,8 @@ export function createFakeClaude(script, { expect = null, key = null } = {}) {
     }
     if (step === "research") {
       check(req.tool_choice?.type === "auto", "the Scout's tool_choice is not auto");
-      check(req.tools?.some((t) => t.type === "web_search_20250305" && t.max_uses === 5), "the Scout's web search is not five searches");
+      // Five searches at most; fewer where the budget cap leaves room for fewer (js/pipeline.js, scout).
+      check(req.tools?.some((t) => t.type === "web_search_20250305" && Number.isInteger(t.max_uses) && t.max_uses >= 1 && t.max_uses <= 5), "the Scout's web search is not one to five searches");
       check(req.tools?.some((t) => t.name === "submit_signals" && t.strict === true && isDeepStrictEqual(t.input_schema, toWire(SCHEMAS.Signals, SCHEMAS))), "submit_signals is not the strict tool with the Signals schema");
       check(!req.output_config?.format, "the Scout sends an output format");
       // pause_turn: the conversation comes back unchanged, the paused turn last.

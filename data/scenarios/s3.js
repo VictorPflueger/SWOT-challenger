@@ -25,8 +25,8 @@ export default bilingual({
     sector: "energy_utilities",
     country: "DE",
     description: {
-      en: "A town utility in Lower Saxony that supplies power, gas and water and runs the local grids",
-      de: "Ein Stadtwerk in Niedersachsen, das Strom, Gas und Wasser liefert und die örtlichen Netze betreibt"
+      en: "A town utility in Lower Saxony that supplies power, gas, heat and water, runs the local grids and charges electric cars",
+      de: "Ein Stadtwerk in Niedersachsen, das Strom, Gas, Wärme und Wasser liefert, die örtlichen Netze betreibt und Elektroautos lädt"
     },
     fictional: true
   },

@@ -118,6 +118,6 @@ function liveTexts(model) {
   const label = MODELS.find((m) => m.id === L.model)?.label || "";
   out.cost = L.capEur === null
     ? { main: euros(0, lang, 2), note: t("p.kpi.cost.before", null, lang) }
-    : { main: euros(L.spentEur, lang), note: L.done ? t("p.kpi.cost.live.done", { model: label }, lang) : t("p.kpi.cost.live", { cap: euros(L.capEur, lang, 2) }, lang) };
+    : { main: euros(L.spentEur, lang), note: L.done ? t("p.kpi.cost.live.done", { model: label, cap: euros(L.capEur, lang, 2) }, lang) : t("p.kpi.cost.live", { cap: euros(L.capEur, lang, 2) }, lang) };
   return out;
 }

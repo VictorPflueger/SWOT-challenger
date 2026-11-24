@@ -22,8 +22,8 @@ export default bilingual({
     sector: "transport_logistics",
     country: "DE",
     description: {
-      en: "A mid-sized container line from Hamburg that sails in a global alliance and runs its own feeder services in northern Europe",
-      de: "Eine mittelgroße Containerreederei aus Hamburg, die in einer globalen Allianz fährt und eigene Zubringerdienste in Nordeuropa betreibt"
+      en: "A mid-sized container line from Bremen that sails in a global alliance and runs its own feeder services in northern Europe",
+      de: "Eine mittelgroße Containerreederei aus Bremen, die in einer globalen Allianz fährt und eigene Zubringerdienste in Nordeuropa betreibt"
     },
     fictional: true
   },

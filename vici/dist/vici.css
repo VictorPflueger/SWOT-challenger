@@ -1497,7 +1497,8 @@
     /* Spinners keep a slow sweep: they are the only cue that work is happening. */
     *:not(.vc-spinner),
     *::before,
-    *::after {
+    *::after,
+    *::backdrop {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
@@ -1725,7 +1726,9 @@
   }
 
   /* Honeycomb: tessellated flat-top hexagon tiles.
-     Columns overlap by ¼ width; every second column drops by ½ height. */
+     Columns overlap by ¼ width; every second column drops by ½ height. The cells fill row by row and every
+     second cell drops, which is every second column in a single row or in rows of an even length. A list's
+     indent is dropped too, so the first column starts at the comb's edge. */
   .vc-honeycomb {
     --_h: var(--vc-honeycomb-cell, 9rem);
     --_w: calc(var(--_h) * 1.1547);
@@ -1736,6 +1739,7 @@
     grid-auto-rows: calc(var(--_h) + var(--_gap));
     padding-bottom: calc(var(--_h) / 2 + var(--_gap) / 2);
     padding-right: calc(var(--_w) * 0.25);
+    padding-left: 0;
     margin: 0;
     list-style: none;
   }
@@ -2052,10 +2056,12 @@
   }
 
   /* ---------- Segmented control ---------- */
+  /* Each option is a target of at least 40 px: its radio reaches into the control's padding, which the
+     option's 32 px leave around it. */
   .vc-segmented {
     display: inline-flex;
     gap: 2px;
-    padding: 3px;
+    padding: 4px;
     border: 1px solid var(--vc-border);
     border-radius: var(--vc-radius-md);
     background: var(--vc-bg-subtle);
@@ -2069,7 +2075,7 @@
   .vc-segmented input {
     position: absolute;
     opacity: 0;
-    inset: 0;
+    inset: -4px 0;
     margin: 0;
     /* The radio covers its whole option. The browser's own radio is round, so even unseen it takes square
        corners: nothing in Vici is round. */
@@ -2478,6 +2484,10 @@
     --_ki: calc((var(--_sh) - var(--_kh)) / 2 * 1.1547);   /* knob inset, parallel to the track's points */
     --_fh: calc(var(--_sh) + 8px);   /* focus ring height */
     align-items: center;
+    /* A target of at least 40 px: the label reaches 0.5rem above and below its 1.5rem track, and gives the
+       space back, so the line it stands on keeps its height. */
+    padding-block: 0.5rem;
+    margin-block: -0.5rem;
   }
   .vc-switch > input {
     width: var(--_sw);
@@ -2549,14 +2559,16 @@
   }
 
   /* ---------- Slider: native range with a hexagon thumb ---------- */
+  /* The thumb is 28 px; the slider's box is a 40 px target, centred on it, and gives the extra 6 px above and
+     below back to the layout. */
   .vc-slider {
     --_fill: var(--vc-accent);
     --_track: var(--vc-track);
     appearance: none;
     display: block;
     width: 100%;
-    height: 28px;
-    margin: 0;
+    height: 40px;
+    margin: -6px 0;
     background: transparent;
     cursor: pointer;
   }
@@ -4840,6 +4852,11 @@
     color: var(--vc-text-muted);
   }
   .vc-dialog__body > :last-child { margin-bottom: 0; }
+  /* A body that scrolls takes the keyboard's focus (Chromium makes a scrolling box focusable when nothing in
+     it is). The dialog clips whatever lies outside its edge, so the ring sits inside. */
+  .vc-dialog__body:focus-visible,
+  .vc-guide__rail:focus-visible,
+  .vc-guide__chapters:focus-visible { outline-offset: calc(-1 * var(--vc-stroke-focus)); }
   .vc-dialog__footer {
     display: flex;
     flex-wrap: wrap;
@@ -5582,15 +5599,19 @@
   .vc-risk__key > [data-size='lg']::before { width: 1.15rem; }
 
   /* The numbers behind the chart, one click away. */
+  /* A target of at least 40 px: the line reaches 0.625rem above and below and gives the space back. */
   .vc-risk__numbers > summary {
     width: fit-content;
+    padding-block: 0.625rem;
+    margin-block: -0.625rem;
     color: var(--vc-accent-text);
     font-size: var(--vc-font-size-sm);
     font-weight: var(--vc-weight-semibold);
+    line-height: 1.25rem;
     cursor: pointer;
   }
   .vc-risk__numbers > summary:focus-visible { outline: var(--vc-stroke-focus) solid var(--vc-focus); outline-offset: 2px; }
-  .vc-risk__numbers[open] > summary { margin-bottom: var(--vc-space-2); }
+  .vc-risk__numbers[open] > summary { margin-bottom: calc(var(--vc-space-2) - 0.625rem); }
 }
 
 /* ==========================================================================
@@ -6337,8 +6358,9 @@
   }
   .vc-live__footer > .vc-tag--feature { flex: 0 1 auto; }
 
-  /* A short window: the dialog takes up to 94 % of it, not a dialog's 85 %, and its parts sit closer. */
-  @media (max-height: 760px) {
+  /* A window up to 880 px high: the dialog takes up to 94 % of it, not a dialog's 85 %, and its parts sit
+     closer. Above 880 px, 85 % holds every part; below it, 85 % left the estimate under the footer. */
+  @media (max-height: 880px) {
     .vc-live.vc-dialog { max-height: min(94vh, 52rem); }
     .vc-live .vc-dialog__header { padding-block: var(--vc-space-4) var(--vc-space-1); }
     .vc-live__body { gap: var(--vc-space-2); }
@@ -6350,7 +6372,7 @@
    Report: the document a run ends in, read on screen and printed or saved as PDF. A report is a column of
    pages: a cover, then pages that each start a new sheet when printed; a long page runs on over more
    sheets. On screen each page is a sheet of paper, light in either theme (the report carries
-   data-theme="light"). In print the sheets fall away: the pages run on A4 with fixed margins, and the
+   data-theme="light"), lying on the page's own background. In print the sheets fall away: the pages run on A4 with fixed margins, and the
    prototype's footer stands on every page, in the page's margin boxes where the browser has them
    (Chromium), or else as a fixed line that repeats without page numbers. The footer's words come from
    custom properties on the root, so one stylesheet serves every prototype and both languages:
@@ -6371,6 +6393,9 @@
     justify-items: center;
     color: var(--vc-text);
     page: vc-report;
+    /* The sheets lie on the page's own background. As a theme island the report would paint the light
+       canvas behind them, a light slab on a dark page. */
+    background: none;
   }
 
   /* A page: a sheet of A4's width at most, its margins as padding. */
@@ -6491,6 +6516,9 @@
   body:has(> [data-vc-print]) > :not([data-vc-print]) { display: none !important; }
   html:has(.vc-report),
   html:has(.vc-report) body { background: #ffffff !important; }
+  /* Paper is light: the page's margins print in the canvas colour of the root's scheme, so in the dark
+     theme every sheet printed with its backgrounds sat in a black frame. */
+  html:has(.vc-report) { color-scheme: light !important; }
   .vc-report-file { padding: 0; }
   .vc-report {
     display: block;

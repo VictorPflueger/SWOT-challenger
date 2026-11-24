@@ -110,6 +110,7 @@
     <button type="button" class="vc-button vc-button--secondary live-open" id="btn-live-bar"><span class="vc-icon vc-icon--zap" aria-hidden="true"></span><span id="live-open-text">Run it live</span></button>
     <!-- A live run: back to the simulation (the run stays in memory) and Clear everything (key, form, run). -->
     <div class="live-controls" id="live-controls" hidden>
+      <span class="scenario-pick__label live-fiction" id="live-fiction" hidden><span class="vc-icon vc-icon--info" aria-hidden="true"></span><span data-i18n="p.scenario">Fictional company</span></span>
       <button type="button" class="vc-button vc-button--secondary" id="btn-sim"><span class="vc-icon vc-icon--chevron-left" aria-hidden="true"></span><span data-i18n="p.live.leave">Back to the simulation</span></button>
       <span class="vc-tooltip-anchor">
         <button type="button" class="vc-icon-button" id="btn-clear" aria-labelledby="tip-clear"><span class="vc-icon vc-icon--trash" aria-hidden="true"></span></button>
@@ -158,7 +159,7 @@
           <button type="button" class="vc-icon-button" id="live-key-show" aria-controls="live-key" aria-pressed="false" aria-label="Show key" data-i18n-attr="aria-label:d.key.show"><span class="vc-icon vc-icon--eye" aria-hidden="true"></span></button>
         </div>
         <p class="vc-help" id="live-key-note"><span data-i18n="d.key.note">Needs a key from the Claude Console. It stays in this tab's memory and is gone when you close or reload it.</span> <a href="https://platform.claude.com/settings/keys" target="_blank" rel="noopener"><span data-i18n="d.key.get">Get a key</span><span class="vc-visually-hidden" data-i18n="p.new.tab"> (opens in a new tab)</span></a></p>
-        <p class="vc-help live-key-advice" data-i18n="d.key.advice">Best in a workspace of its own with a monthly spend limit. A Claude.ai plan does not pay for API use; Max, Ultra and Team plans include monthly API credits.</p>
+        <p class="vc-help live-key-advice" data-i18n="d.key.advice">Best in a workspace of its own with a monthly spend limit. API use is billed apart from a Claude.ai plan, though Max, Ultra and Team plans come with monthly API credits.</p>
         <p class="vc-live__current" id="live-key-current" hidden><span data-i18n="d.key.current">Key in memory:</span> <span class="vc-live__masked" id="live-key-masked"></span> <button type="button" class="vc-button vc-button--ghost vc-button--sm vc-live__forget" id="live-key-forget" data-i18n="d.key.forget">Forget key</button></p>
         <p class="live-key-status" id="live-key-status" role="status"></p>
       </section>
@@ -263,7 +264,7 @@
             <tr><th scope="row">At stake a year</th><td>What the issues found could cost a year: each euro range's midpoint times its likelihood</td><td><span data-fig="company">Arvento Drives</span>: <span data-fig="stake">€4.9m on 5 of 6 issues</span></td></tr>
             <tr><th scope="row">Items challenged</th><td>How many of the SWOT's items the Red team questions, and how many missing ones it adds</td><td><span data-fig="challenged">6 of 14</span>, <span data-fig="added">1</span> added</td></tr>
             <tr><th scope="row">Response to the market</th><td>How well the company answers what happens outside it, from 1 to 4, where 2.50 is average</td><td><span data-fig="efe.before">1.60</span>, after the strategies <span data-fig="efe.after">2.55</span></td></tr>
-            <tr><th scope="row">Session cost</th><td>What the model calls cost: estimated for a simulated run, measured in a live one</td><td><span data-fig="cost">&lt; €0.01</span>, estimated</td></tr>
+            <tr><th scope="row">Session cost</th><td>What the model calls cost: estimated for a simulated run, measured in a live one</td><td><span data-fig="cost">&lt; €0.01</span>, estimated on Balanced; <span data-fig="cost.thorough">€0.08</span> on Thorough</td></tr>
           </tbody>
         </table></div>
       </section>
@@ -327,7 +328,7 @@
             <tr><th scope="row">Jährlich auf dem Spiel</th><td>Was die gefundenen Probleme im Jahr kosten könnten: die Mitte jeder Euro-Spanne mal ihre Wahrscheinlichkeit</td><td><span data-fig="company">Arvento Drives</span>: <span data-fig="stake">4,9 Mio. € bei 5 von 6 Problemen</span></td></tr>
             <tr><th scope="row">Beanstandete Punkte</th><td>Wie viele Punkte der SWOT das Red Team beanstandet und wie viele fehlende es ergänzt</td><td><span data-fig="challenged">6 von 14</span>, <span data-fig="added">1</span> ergänzt</td></tr>
             <tr><th scope="row">Antwort auf den Markt</th><td>Wie gut das Unternehmen auf das antwortet, was außerhalb geschieht, von 1 bis 4, Durchschnitt 2,50</td><td><span data-fig="efe.before">1,60</span>, nach den Strategien <span data-fig="efe.after">2,55</span></td></tr>
-            <tr><th scope="row">Sitzungskosten</th><td>Was die Aufrufe des Modells kosten: geschätzt für einen simulierten Lauf, gemessen in einem Live-Lauf</td><td><span data-fig="cost">&lt; 0,01 €</span>, geschätzt</td></tr>
+            <tr><th scope="row">Sitzungskosten</th><td>Was die Aufrufe des Modells kosten: geschätzt für einen simulierten Lauf, gemessen in einem Live-Lauf</td><td><span data-fig="cost">&lt; 0,01 €</span>, geschätzt für Ausgewogen; <span data-fig="cost.thorough">0,08 €</span> für Gründlich</td></tr>
           </tbody>
         </table></div>
       </section>

@@ -57,9 +57,10 @@ export function resolveSettings({ preset = DEFAULT_PRESET, model = null, effort 
 
 /**
  * A new recording from the Start form. company: { name, sector (id, or "" to let the agents decide),
- * country, description }; items: { strengths: [text…], … }; lang: the run's language; today: YYYY-MM-DD.
+ * country, description }; items: { strengths: [text…], … }; lang: the run's language; today: YYYY-MM-DD;
+ * fictional: the company is one of the scenarios' fictional companies, filled in for a demo.
  */
-export function newRecording({ company, items, lang, today }) {
+export function newRecording({ company, items, lang, today, fictional = false }) {
   const entered = {};
   for (const { id: q } of QUADRANTS) entered[q] = (items[q] || []).map((text, i) => ({ id: `${LETTER[q]}${i + 1}`, text: { [lang]: text } }));
   return {
@@ -67,7 +68,7 @@ export function newRecording({ company, items, lang, today }) {
     source: "live",
     as_of: today,
     language: lang,
-    company: { name: company.name, sector: company.sector || "", country: company.country || "", description: { [lang]: company.description || "" }, fictional: false },
+    company: { name: company.name, sector: company.sector || "", country: company.country || "", description: { [lang]: company.description || "" }, fictional: !!fictional },
     sources: [],
     entered,
     answers: { [lang]: {} },
@@ -109,9 +110,12 @@ export function createLiveRun({ recording, settings: initialSettings, capEur: in
   const current = () => assemble(rec, lang);
 
   // ---- one request ----------------------------------------------------------------------------------
+  /** A request's own input, as the budget counts it. */
+  const inputTokensOf = (body) => tokensIn(body.system) + tokensIn(body.messages) + tokensIn(body.output_config?.format?.schema ?? "") + tokensIn(body.tools ?? "") + OVERHEAD_TOKENS;
+
   async function send(step, body, { searches = 0, repaired = false } = {}) {
     if (st.requests >= MAX_REQUESTS) throw new StopRun("requests", step);
-    const inputTokens = tokensIn(body.system) + tokensIn(body.messages) + tokensIn(body.output_config?.format?.schema ?? "") + tokensIn(body.tools ?? "") + OVERHEAD_TOKENS;
+    const inputTokens = inputTokensOf(body);
     const plan = planRequest({ modelId: settings.model, step, inputTokens, spentEur: spent(), capEur, searches });
     if (!plan.ok) throw new StopRun(plan.reason, step);
     if (plan.lowered && !st.lowered.includes(step)) st.lowered.push(step);
@@ -235,35 +239,49 @@ export function createLiveRun({ recording, settings: initialSettings, capEur: in
     }
   };
 
-  /** The Scout: searches, then submit_signals; returns the accepted signals and notes the outcome. */
+  /**
+   * The Scout: searches, then submit_signals; returns the accepted signals and notes the outcome. It searches
+   * as often as the cap allows, five times at most; when not one search fits, or a later request of its turn
+   * would pass the cap, research ends there ("cap") and the run goes on without it.
+   */
   async function scout() {
     const input = inputFor("research", current(), { lang, today });
-    const body = {
+    const submit = { name: SUBMIT_SIGNALS.name, description: SUBMIT_SIGNALS.description, input_schema: toWire(SCHEMAS.Signals, SCHEMAS), strict: true };
+    const bodyWith = (uses) => ({
       model: settings.model,
       system: systemFor("research"),
-      tools: [
-        { ...ANTHROPIC.webSearchTool, max_uses: RESEARCH.maxUses },
-        { name: SUBMIT_SIGNALS.name, description: SUBMIT_SIGNALS.description, input_schema: toWire(SCHEMAS.Signals, SCHEMAS), strict: true }
-      ],
+      tools: [{ ...ANTHROPIC.webSearchTool, max_uses: uses }, submit],
       tool_choice: { type: "auto" },
       output_config: { effort: settings.effort },
       ...(settings.thinking ? { thinking: settings.thinking } : {})
-    };
+    });
+    const first = [{ role: "user", content: JSON.stringify(input) }];
+    const fits = (uses) => planRequest({ modelId: settings.model, step: "research", inputTokens: inputTokensOf({ ...bodyWith(uses), messages: first }), spentEur: spent(), capEur, searches: uses }).ok;
+    let uses = RESEARCH.maxUses;
+    while (uses > 0 && !fits(uses)) uses -= 1;
+    if (!uses) { st.research = "cap"; return []; }
+    const body = bodyWith(uses);
     let messages = [{ role: "user", content: JSON.stringify(input) }];
     const contents = [];
     let accepted = [];
     let submitted = 0;
     let reminded = false;
     let round = false;
+    // The searches of the turn so far: a resend after pause_turn and a round of tool results go on with the
+    // same turn, so only the searches left can run; a reminder starts a new turn with all of them again.
+    let searched = 0;
     for (let n = 0; n < MAX_SCOUT_REQUESTS; n++) {
       let message;
       try {
-        message = await send("research", { ...body, messages }, { searches: RESEARCH.maxUses });
+        message = await send("research", { ...body, messages }, { searches: Math.max(0, uses - searched) });
       } catch (e) {
         if (e instanceof ApiError && isWebSearchDisabled(e)) { st.research = "off"; return []; }
+        // A later request of the turn that could pass the cap or Haiku's line does not start; research ends.
+        if (e instanceof StopRun && (e.reason === "cap" || e.reason === "long")) { st.research = accepted.length ? "found" : "cap"; return accepted.slice(0, 8); }
         throw e;
       }
       contents.push(message.content);
+      searched += Number(message.usage?.server_tool_use?.web_search_requests ?? message.usage?.web_search_requests) || 0;
       const more = n + 1 < MAX_SCOUT_REQUESTS;
       if (message.stop_reason === "pause_turn") {
         // The paused turn goes back unchanged, so the server carries on where it stopped.
@@ -274,6 +292,7 @@ export function createLiveRun({ recording, settings: initialSettings, capEur: in
       if (!subs.length) {
         if (!reminded && more) {
           reminded = true;
+          searched = 0;
           messages = [...messages, { role: "assistant", content: message.content }, { role: "user", content: REMINDER }];
           continue;
         }
@@ -384,6 +403,18 @@ export function createLiveRun({ recording, settings: initialSettings, capEur: in
         st.finishedAt = now();
         emit("done");
       }
+    },
+    /**
+     * A new choice once the summary is written. The Writer's text holds for any choice: it names no single
+     * strategy and cites every figure through a placeholder that code fills in for the adopted choice. So
+     * the choice changes without another request, as in a recorded run. False when the run is not done.
+     */
+    rechoose(chosen) {
+      if (st.status !== "done") return false;
+      rec.decision.chosen = [...chosen];
+      rec.recorded_choice = [...chosen];
+      emit("rechosen");
+      return true;
     },
     /** Runs the stopped step again and goes on from there, as far as the person's turn. */
     async resume({ zoneName } = {}) {

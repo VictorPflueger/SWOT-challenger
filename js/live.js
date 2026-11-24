@@ -15,10 +15,11 @@ import { SECTORS } from "../data/kpis.js";
 import { SCENARIOS } from "../data/scenarios/index.js";
 import { loadScenario, STEP } from "./simulation.js";
 import { assemble, recommended } from "./scenario.js";
-import { getKey, hasKey, setKey, forgetKey, looksLikeKey, maskKey } from "./keystore.js";
+import { getKey, hasKey, setKey, forgetKey, looksLikeKey, maskKey, redactSecrets } from "./keystore.js";
 import { checkKey } from "./anthropic.js";
 import { apiMessage } from "./api_messages.js";
-import { privacyFindings } from "./privacy.js";
+import { privacyFindings, privateKinds } from "./privacy.js";
+import { checkWarning } from "./live_panels.js";
 import { newRecording, createLiveRun, resolveSettings } from "./pipeline.js";
 import { estimateLive, researchUsage } from "./estimate.js";
 import { usageCostUsd } from "./cost.js";
@@ -28,6 +29,9 @@ import { euros, duration, countryName, zoneName } from "./format.js";
 export const STEP_OF = Object.freeze({ complete: STEP.complete, research: STEP.challenge, challenge: STEP.challenge, assess: STEP.assess, strategise: STEP.strategise, summary: STEP.summary });
 const emptyItems = () => Object.fromEntries(QUADRANTS.map(({ id }) => [id, []]));
 const emptyForm = () => ({ company: { name: "", sector: "", country: "", description: "" }, items: emptyItems() });
+// The person's check of the AI's items: removed ids, edited texts, the item being edited, and what in an
+// edit looks private (id to kinds, as js/privacy.js names them).
+const emptyCheck = () => ({ removed: new Set(), edited: new Map(), editing: null, flags: new Map(), kept: null });
 const today = () => new Date().toISOString().slice(0, 10);
 
 /**
@@ -39,9 +43,11 @@ export function createLive(presenter) {
     active: false,
     form: emptyForm(),
     nameError: false,
+    // The fictional company chosen in the picker, and the one last filled in.
+    fill: { choice: "", done: "" },
     run: null,
     snap: null,
-    check: { removed: new Set(), edited: new Map(), editing: null },
+    check: emptyCheck(),
     lastRun: null,
     saved: true,
     resume: false
@@ -54,7 +60,7 @@ export function createLive(presenter) {
     L.snap = L.run.snapshot();
     if (e.type === "done") L.lastRun = { eur: L.snap.spentEur, seconds: Math.round((L.snap.finishedAt - L.snap.startedAt) / 1000) };
     if (e.type === "decide") presenter.decide(recommended(view()));
-    if (["answer", "check", "decide", "done", "stopped"].includes(e.type)) L.saved = false;
+    if (["answer", "check", "decide", "done", "stopped", "rechosen"].includes(e.type)) L.saved = false;
     if (e.type === "step") startTicker(); else if (["check", "decide", "done", "stopped"].includes(e.type)) stopTicker();
     // Back in the simulation, the run goes on in memory and the page stays where the person is.
     if (!L.active) return;
@@ -82,11 +88,14 @@ export function createLive(presenter) {
     ticker = 0;
   }
 
+  /** A company that carries one of the scenarios' names is that fictional company, filled in for a demo. */
+  const fictional = (name) => SCENARIOS.some((s) => s.name.toLowerCase() === String(name || "").trim().toLowerCase());
+
   /** The run as the presenter shows it: the recording assembled, or the form before a run. */
   function view() {
     if (L.run) return assemble(L.run.rec, L.run.rec.language);
     const lang = getLang();
-    const rec = newRecording({ company: L.form.company, items: cleanItems(), lang, today: today() });
+    const rec = newRecording({ company: L.form.company, items: cleanItems(), lang, today: today(), fictional: fictional(L.form.company.name) });
     return assemble(rec, lang);
   }
 
@@ -119,10 +128,13 @@ export function createLive(presenter) {
 
   async function startRun({ settings, capEur }) {
     const lang = getLang();
-    const rec = newRecording({ company: { ...L.form.company, name: L.form.company.name.trim().slice(0, LIMITS.companyName), description: L.form.company.description.trim().slice(0, LIMITS.oneLine), country: L.form.company.country.trim().slice(0, LIMITS.country) }, items: cleanItems(), lang, today: today() });
-    L.check = { removed: new Set(), edited: new Map(), editing: null };
+    const rec = newRecording({ company: { ...L.form.company, name: L.form.company.name.trim().slice(0, LIMITS.companyName), description: L.form.company.description.trim().slice(0, LIMITS.oneLine), country: L.form.company.country.trim().slice(0, LIMITS.country) }, items: cleanItems(), lang, today: today(), fictional: fictional(L.form.company.name) });
+    L.check = emptyCheck();
     presenter.reset();
-    L.run = createLiveRun({ recording: rec, settings, capEur, onEvent: onRunEvent });
+    // A run's events count only while it is the page's run: after Clear everything, or once a new run has
+    // started, an old request that ends late changes nothing (review finding 14).
+    const run = createLiveRun({ recording: rec, settings, capEur, onEvent: (e) => { if (L.run === run) onRunEvent(e); } });
+    L.run = run;
     L.snap = L.run.snapshot();
     L.saved = false;
     await L.run.complete();
@@ -136,7 +148,15 @@ export function createLive(presenter) {
   }
 
   async function adopt(chosen) {
-    if (!L.run || L.snap?.status !== "decide") return;
+    if (!L.run) return;
+    // A new choice after the summary costs nothing: the summary holds for any choice (review finding 8).
+    if (L.snap?.status === "done") {
+      if (L.run.rechoose(chosen)) presenter.go(STEP.summary, { keep: true, focus: true });
+      return;
+    }
+    // Stopped while writing the summary: Adopt with the new choice writes it again, as Try again would.
+    const stoppedAtSummary = L.snap?.status === "stopped" && L.snap.stop?.step === "summary";
+    if (L.snap?.status !== "decide" && !stoppedAtSummary) return;
     await L.run.summarise({ chosen, zoneName });
   }
 
@@ -166,22 +186,45 @@ export function createLive(presenter) {
     L.run?.abort();
     stopTicker();
     forgetKey();
-    Object.assign(L, { form: emptyForm(), nameError: false, run: null, snap: null, check: { removed: new Set(), edited: new Map(), editing: null }, saved: true, resume: false });
+    Object.assign(L, { form: emptyForm(), nameError: false, fill: { choice: "", done: "" }, run: null, snap: null, check: emptyCheck(), saved: true, resume: false });
     presenter.announce(t("p.live.cleared"));
     presenter.leave();
   }
 
   // ---- the person's check of the AI's items ---------------------------------------------------------
   const checkActions = {
-    remove(id) { L.check.removed.add(id); L.check.editing = null; presenter.render(); focusLater(`undo-${id}`); },
-    undo(id) { L.check.removed.delete(id); presenter.render(); focusLater(`edit-${id}`); },
-    edit(id) { L.check.editing = id; presenter.render(); focusLater(`edit-input-${id}`); },
+    remove(id) {
+      // The factor tables need an item inside the company and one outside it: the last item of a side
+      // stays, with a sentence that says why (review finding 12).
+      const items = view().items;
+      const side = QUADRANTS.find((q) => q.id === items.find((i) => i.id === id)?.quadrant)?.side;
+      const left = items.filter((i) => i.id !== id && !L.check.removed.has(i.id) && QUADRANTS.find((q) => q.id === i.quadrant)?.side === side);
+      L.check.editing = null;
+      if (!left.length) {
+        L.check.kept = { id, side };
+        presenter.render();
+        presenter.announce(t(`s.check.keep.${side}`));
+        focusLater(`remove-${id}`);
+        return;
+      }
+      L.check.kept = null;
+      L.check.removed.add(id);
+      presenter.render();
+      focusLater(`undo-${id}`);
+    },
+    undo(id) { L.check.kept = null; L.check.removed.delete(id); presenter.render(); focusLater(`edit-${id}`); },
+    edit(id) { L.check.kept = null; L.check.editing = id; presenter.render(); focusLater(`edit-input-${id}`); },
     save(id, text) {
       const v = String(text || "").trim().slice(0, LIMITS.itemText);
       const original = view().items.find((i) => i.id === id)?.text;
       if (v && v !== original) L.check.edited.set(id, v); else if (!v || v === original) L.check.edited.delete(id);
+      // An edit goes to the agents that follow, so it gets the same look for private data as the Start form
+      // (brief 5.10): a warning under the item that does not block.
+      const kinds = L.check.edited.has(id) ? privateKinds(v) : [];
+      if (kinds.length) L.check.flags.set(id, kinds); else L.check.flags.delete(id);
       L.check.editing = null;
       presenter.render();
+      if (kinds.length) presenter.announce(checkWarning(kinds));
       focusLater(`edit-${id}`);
     },
     cancel(id) { L.check.editing = null; presenter.render(); focusLater(`edit-${id}`); }
@@ -210,8 +253,12 @@ export function createLive(presenter) {
     tidy(q, i) {
       if (i < L.form.items[q].length && !String(L.form.items[q][i] ?? "").trim()) formActions.remove(q, i);
     },
-    async fill(id) {
-      if (!id) return;
+    // Choosing a company changes nothing yet: arrow keys move through the list without filling the form or
+    // moving the focus (WCAG 2.2, 3.2.2). Fill in does it, says so and keeps the focus on the button.
+    choose(id) { L.fill.choice = id; L.fill.done = ""; },
+    async fill() {
+      const id = L.fill.choice;
+      if (!id) { focusLater("live-fill"); return; }
       const s = await loadScenario(id);
       const lang = getLang();
       L.form = {
@@ -219,8 +266,10 @@ export function createLive(presenter) {
         items: Object.fromEntries(QUADRANTS.map(({ id: q }) => [q, s.entered[q].map((it) => it.text[lang])]))
       };
       L.nameError = false;
+      L.fill.done = s.company.name;
       presenter.render();
-      focusLater("live-name");
+      presenter.announce(t("s.live.fill.done", { company: s.company.name }));
+      focusLater("live-fill-go");
     },
     start() {
       if (!L.form.company.name.trim()) {
@@ -400,7 +449,8 @@ export function createLive(presenter) {
     if (!L.run) return;
     const rec = L.run.toRecording();
     const slug = rec.company.name.toLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "company";
-    const blob = new Blob([`${JSON.stringify(rec, null, 2)}\n`], { type: "application/json" });
+    // Whatever is shaped like a key, typed into the form by mistake, leaves the file redacted (brief 5.3).
+    const blob = new Blob([`${redactSecrets(JSON.stringify(rec, null, 2))}\n`], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = h("a", { href: url, download: `swot-run-${slug}-${rec.as_of}.json`, hidden: true });
     document.body.append(a);
@@ -420,6 +470,7 @@ export function createLive(presenter) {
     set active(v) { L.active = !!v; },
     get form() { return L.form; },
     get nameError() { return L.nameError; },
+    get fill() { return L.fill; },
     get run() { return L.run; },
     get check() { return L.check; },
     get snap() { return L.snap; },

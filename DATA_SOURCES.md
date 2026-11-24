@@ -1,6 +1,6 @@
 # Data sources
 
-Version 0.2.0, 23 November 2026. What the three scenarios say about the world is real, checked at source and listed here with the date it was read. The companies are fictional and their own figures illustrative: every screen says "Fictional company", and the Start step says that its figures are made up. The scenario checker (`tools/check-scenarios.mjs`) fails when a scenario cites a source this file does not list with its date.
+Version 1.0.0, 24 November 2026. What the three scenarios say about the world is real, checked at source and listed here with the date it was read. The companies are fictional and their own figures illustrative: every screen says "Fictional company", and the Start step says that its figures are made up. The scenario checker (`tools/check-scenarios.mjs`) fails when a scenario cites a source this file does not list with its date.
 
 ## 1. Real and fictional
 
@@ -15,7 +15,7 @@ A scenario older than 90 days shows "Check for updates" on the SIMULATION tape.
 
 ## 2. S1 Tidewell Lines
 
-A mid-sized container line from Hamburg that sails in a global alliance and runs its own feeder services in northern Europe.
+A mid-sized container line from Bremen that sails in a global alliance and runs its own feeder services in northern Europe.
 
 | Fact the scenario uses | Source | Read on |
 |---|---|---|
@@ -40,7 +40,7 @@ Two findings of the Phase 0 plan changed when they were read again for this file
 
 ## 4. S3 Auental Energie
 
-A town utility in Lower Saxony that supplies power, gas and water and runs the local grids. Its team entered strengths and threats only.
+A town utility in Lower Saxony that supplies power, gas, heat and water, runs the local grids and charges electric cars. Its team entered strengths and threats only.
 
 | Fact the scenario uses | Source | Read on |
 |---|---|---|
@@ -52,6 +52,10 @@ A town utility in Lower Saxony that supplies power, gas and water and runs the l
 | Enpal offers town utilities partnerships for heat pumps; Stadtwerke Springe in Lower Saxony already uses the offer; Enpal installed about 10,000 heat pumps in 2025 (ZfK, 19 February 2026) | https://www.zfk.de/unternehmen/enpal-will-luecken-in-lokaler-waermeplanung-schliessen | 2026-11-23 |
 
 What changed against the Phase 0 plan: the smart meter share the plan gave for the end of 2025 is not in the regulator's release, which counts all metering points instead, so the scenario cites only the proceedings and the 2032 target. The Buildings Modernisation Act amends and renames the Buildings Energy Act rather than replacing it by a new law; the scenario says so. Auental's town is set as a middle-order town, so its heat plan is due by the end of this year.
+
+### Aligned with the brief in 1.0.0
+
+The independent review of 24 November 2026 found two places where a scenario's own description strayed from the brief. Tidewell Lines was based in Hamburg; the brief and the sister tools place it in Bremen, and so does it now. Auental Energie supplied power, gas and water; the brief adds heat, the local grid and car charging, and so does the description now. Neither is a fact about the world, so neither has a source; nothing else in either story changed.
 
 ## 5. Methods
 

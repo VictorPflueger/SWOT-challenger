@@ -176,7 +176,8 @@
 .report-hint { margin: 0; color: var(--vc-text-muted); font-size: var(--vc-font-size-xs); }
 .report-error { margin: 0; padding: var(--vc-space-1) var(--vc-space-2); border: 1px solid var(--vc-danger-border); background: var(--vc-danger-bg); color: var(--vc-danger-text); font-size: var(--vc-font-size-xs); }
 .report-error[hidden] { display: none; }
-.report-ideator { font-size: var(--vc-font-size-sm); font-weight: var(--vc-weight-semibold); }
+/* Alone on its line, so it is a target of its own: 24 px high, as every target (TECH_NOTES, 13). */
+.report-ideator { display: inline-flex; align-items: center; min-height: 24px; font-size: var(--vc-font-size-sm); font-weight: var(--vc-weight-semibold); }
 
 /* ---------- The report dialog: the sheets at full width, the downloads above them ---------- */
 .report-dialog { --vc-dialog-width: min(62rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); }
