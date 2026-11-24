@@ -81,7 +81,10 @@ function measure(primary) {
     const top = bar ? bar.getBoundingClientRect().top : H;
     for (const card of document.querySelectorAll(".tows-card")) {
       const r = card.getBoundingClientRect();
-      if (r.top < 0 || r.bottom > top + 1) out.push(`the strategy card "${card.querySelector(".tows-card__title").textContent.slice(0, 30)}" is not in full above the bar`);
+      // Where a card runs under the bar, the message gives its box, its title's and its line's heights, so a
+      // run on another machine says what grew.
+      const px = (el) => (el ? Math.round(el.getBoundingClientRect().height) : 0);
+      if (r.top < 0 || r.bottom > top + 1) out.push(`the strategy card "${card.querySelector(".tows-card__title").textContent.slice(0, 30)}" is not in full above the bar (card ${Math.round(r.top)} to ${Math.round(r.bottom)} px, bar at ${Math.round(top)}; title ${px(card.querySelector(".tows-card__title"))} px, line ${px(card.querySelector(".tows-card__meta"))} px; lead ${px(document.getElementById("step-lead"))} px; fonts ${document.fonts.status})`);
     }
   }
   // Targets (WCAG 2.2, 2.5.8): every control a pointer can hit, at least 24 px in both directions.
@@ -179,6 +182,7 @@ async function measured(page) {
   // time. Headless Chromium can leave an ended animation "running" until the next frame, so the wait reads
   // the clock rather than the animation's promise.
   await page.evaluate(settled, 3000);
+  await page.evaluate(() => document.fonts.ready);
   const m = await page.evaluate(measure, PRIMARY);
   for (const sel of m.seen) seenPrimary.add(sel);
   return m;
