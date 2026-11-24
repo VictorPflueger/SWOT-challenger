@@ -33,7 +33,7 @@ import { existsSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { APP_ROOT, ONLY, launchBrowser, serveStatic, NETWORK_NOISE, MOCK_KEY, outDir } from "./lib/harness.mjs";
 import { pdfPages } from "./lib/pdf-text.mjs";
-import { SCEN, answers, scripted, openLivePage, closeLivePage, until, startRun, toDialog, wholeRun } from "./lib/live-page.mjs";
+import { SCEN, answers, scripted, openLivePage, closeLivePage, until, startRun, toDialog, wholeRun, filledIn } from "./lib/live-page.mjs";
 import { search, tool } from "./lib/fake-claude.mjs";
 import { handoffProblems } from "../js/handoff.js";
 import { assemble, figuresFor } from "../js/scenario.js";
@@ -578,7 +578,7 @@ async function names() {
   await p.page.waitForSelector("#live-fill");
   await p.page.selectOption("#live-fill", "s2");
   await p.page.click("#live-fill-go");
-  await p.page.waitForFunction((name) => document.getElementById("live-name")?.value === name, SCEN.s2.company.name);
+  await filledIn(p.page, SCEN.s2.company.name);
   await p.page.fill("#live-name", company);
   await p.page.click("#btn-cta");
   await p.page.waitForSelector("#live-dialog[open]");

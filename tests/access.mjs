@@ -16,7 +16,7 @@
 // Usage: node tests/access.mjs [keyboard] [motion]   (both when none is named)
 import { APP_ROOT, launchBrowser, serveStatic, NETWORK_NOISE, MOCK_KEY, wanted } from "./lib/harness.mjs";
 import { createFakeClaude, CORS, MODELS_LIST } from "./lib/fake-claude.mjs";
-import { openLivePage, closeLivePage, scripted, answers, until, SCEN } from "./lib/live-page.mjs";
+import { openLivePage, closeLivePage, scripted, answers, until, SCEN, filledIn } from "./lib/live-page.mjs";
 
 const results = [];
 const check = (group, ok, what) => results.push([group, !!ok, what]);
@@ -234,8 +234,8 @@ async function liveByKeyboard(lang) {
     if (browsed.focus !== "live-fill" || browsed.name || browsed.choice !== name) problems.push(`the arrow keys on the picker should only choose: the focus is on ${browsed.focus}, the name field holds "${browsed.name}", the picker shows ${browsed.choice}`);
     if (!(await tabTo(page, "#live-fill-go", stops, 4))) throw new Error("Tab never reached Fill in");
     await page.keyboard.press("Enter");
-    await page.waitForFunction((n) => document.getElementById("live-name")?.value === n, name, { timeout: 5000 }).catch(() => problems.push(`Fill in did not fill the form with ${name}`));
-    if ((await page.evaluate(() => document.activeElement?.id)) !== "live-fill-go") problems.push("after Fill in the focus left the button");
+    // Fill in fills the form and gives the focus back to its own button, a frame later.
+    await filledIn(page, name).catch(async () => problems.push(`Fill in did not fill the form with ${name} and keep the focus on its button (the name field holds "${await page.evaluate(() => document.getElementById("live-name")?.value)}", the focus is on ${await page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName)})`));
     await ctaReady(page);
     if (!(await tabTo(page, "#btn-cta", stops))) throw new Error("Tab never reached the bar's button on the Start form");
     await page.keyboard.press("Enter");
@@ -414,7 +414,7 @@ async function motionRun(reduce) {
   await page.waitForSelector("#live-fill");
   await page.selectOption("#live-fill", "s2");
   await page.click("#live-fill-go");
-  await page.waitForFunction(() => document.getElementById("live-name")?.value);
+  await filledIn(page);
   await page.click("#btn-cta");
   await page.waitForSelector("#live-dialog[open]");
   await page.fill("#live-key", MOCK_KEY);

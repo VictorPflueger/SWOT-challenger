@@ -35,7 +35,7 @@ import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { APP_ROOT, ONLY, launchBrowser, serveStatic, MOCK_KEY, viciDir, REQUIRE_VICI } from "./lib/harness.mjs";
 import { json, thinking, tool, search, MODELS_LIST, toolResults } from "./lib/fake-claude.mjs";
-import { SCEN, HAIKU, answers, scripted, openLivePage, closeLivePage, state, until, toDialog, startRun, wholeRun, text } from "./lib/live-page.mjs";
+import { SCEN, HAIKU, answers, scripted, openLivePage, closeLivePage, state, until, toDialog, startRun, wholeRun, text, filledIn } from "./lib/live-page.mjs";
 import { MODELS, FX_USD_EUR, BUDGET } from "../js/config.js";
 import { usageCostUsd } from "../js/cost.js";
 import { scenarioProblems } from "../js/scenario_check.js";
@@ -292,6 +292,8 @@ async function ac11() {
     for (const [quad, value] of [["strengths", `Contact ${address}`], ["weaknesses", "IBAN DE89 3704 0044 0532 0130 00"], ["threats", "Strictly confidential: pricing"], ["opportunities", "Internal processes are slow"]]) {
       await q.page.fill(`#add-${quad}`, value);
       await q.page.press(`#add-${quad}`, "Enter");
+      // The page puts the focus back on this field a frame later; the next fill waits for it (CI is slow).
+      await q.page.waitForFunction((id) => document.activeElement?.id === id, `add-${quad}`, { timeout: 5000 });
     }
     await q.page.click("#btn-cta");
     await q.page.waitForSelector("#live-dialog[open]");
@@ -445,7 +447,7 @@ async function ac18() {
     await q.page.click("#btn-live");
     await q.page.selectOption("#live-fill", "s2");
     await q.page.click("#live-fill-go");
-    await q.page.waitForFunction(() => document.getElementById("live-name")?.value);
+    await filledIn(q.page);
     for (const quad of ["opportunities", "threats"]) {
       while (await q.page.$(`.vc-framework__area[data-quad="${quad}"] .live-item__remove`)) await q.page.click(`.vc-framework__area[data-quad="${quad}"] .live-item__remove`);
     }
@@ -569,7 +571,7 @@ async function screens() {
       check(empty.length === 4 && empty.every((x) => x.q && x.e === L["q.live.empty"]), `${lang}: each empty field shows its question and "${L["q.live.empty"]}"`);
       await p.page.selectOption("#live-fill", "s2");
       await p.page.click("#live-fill-go");
-      await p.page.waitForFunction(() => document.getElementById("live-name")?.value);
+      await filledIn(p.page);
       await p.page.click("#btn-cta");
       await p.page.waitForSelector("#live-dialog[open]");
       await startRun(p.page);
@@ -679,7 +681,7 @@ async function keyTyped() {
   await p.page.click("#btn-live");
   await p.page.selectOption("#live-fill", "s2");
   await p.page.click("#live-fill-go");
-  await p.page.waitForFunction(() => document.getElementById("live-name")?.value);
+  await filledIn(p.page);
   await p.page.fill("#live-line", `Drives and gearboxes, key ${key}`);
   await p.page.fill("#item-strengths-0", `Quality, key ${key}`);
   await p.page.click("#btn-cta");
