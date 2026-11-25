@@ -1,8 +1,11 @@
 // The guards of PLAN.md 3.1 (brief 6.7), without a browser (AC-19). Each refusal is planted in a valid
 // answer of the scenario Arvento Drives and must come back with its own message, the words the one repair
-// request sends to the model; the valid answers pass untouched. Prints GUARDS OK.
+// request sends to the model; the valid answers pass untouched. Then the Analyst's last resort (1.0.1):
+// every pricing refusal is settled by setting that figure aside, and every other refusal still stands, so
+// the run stops on it as before. Prints GUARDS OK.
 // Usage: node tests/guards.mjs
-import { answerProblems } from "../js/guards.js";
+import { answerProblems, setAsidePricing } from "../js/guards.js";
+import { KPIS } from "../data/kpis.js";
 import { assemble } from "../js/scenario.js";
 import { FACT_KEYS } from "../js/facts.js";
 import S2 from "../data/scenarios/s2.js";
@@ -24,6 +27,23 @@ const ctx = {
 
 // The valid answers pass.
 for (const step of Object.keys(ctx)) check(answerProblems(step, A[step], ctx[step]).length === 0, `${step}: the recorded answer passes every guard`);
+
+// The Analyst's pricing refusals: [what, change, the words]. The last resort settles each of them.
+const priced = (a) => a.impacts.find((x) => x.monetisable && x.kpis.length === 1);
+const unpriced = (a) => a.impacts.find((x) => !x.monetisable);
+const otherSector = KPIS.find((k) => !k.id.startsWith(`${run.sector}.`) && !k.id.startsWith("general.")).id;
+const PRICING = [
+  ["a priced issue without a KPI (Victor's run, 25 November 2026)", (a) => { priced(a).kpis = []; }, /is priced but moves no KPI\. Name one to three KPIs it moves; where none fits, set monetisable to false with a reason, no KPI and zero euros\./],
+  ["a priced issue at nothing", (a) => { Object.assign(priced(a), { eur_year_low: 0, eur_year_high: 0 }); }, /is priced at nothing/],
+  ["a priced issue with a reason for not being priced", (a) => { priced(a).reason = "No reason"; }, /reason for not being priced stays empty/],
+  ["a KPI outside the library without a definition", (a) => { const im = priced(a); im.kpis[0] = { ...im.kpis[0], id: `${run.sector}.made_up`, definition: "" }; }, /without a full definition/],
+  ["a KPI of another sector", (a) => { const im = priced(a); im.kpis[0] = { ...im.kpis[0], id: otherSector }; }, /from another sector/],
+  ["a KPI whose change runs backwards", (a) => { Object.assign(priced(a).kpis[0], { change_low: -1, change_high: -3 }); }, /the change of .* runs backwards/],
+  ["a KPI that goes down while its change goes up", (a) => { Object.assign(priced(a).kpis[0], { direction: "down", change_low: 1, change_high: 3 }); }, /goes down, but its change says otherwise/],
+  ["low above high", (a) => { const im = priced(a); [im.eur_year_low, im.eur_year_high] = [im.eur_year_high + 10, im.eur_year_low]; }, /runs backwards/],
+  ["an issue not priced that carries euros", (a) => { unpriced(a).eur_year_high = 50000; }, /is not priced, so it gives a reason, no KPI and zero euros/],
+  ["an issue not priced without a reason", (a) => { unpriced(a).reason = ""; }, /is not priced, so it gives a reason, no KPI and zero euros/]
+];
 
 /** [step, what, change, the words the refusal must hold] */
 const PLANTED = [
@@ -47,6 +67,7 @@ const PLANTED = [
   ["assess", "a KPI outside the library without a definition", (a) => { const im = a.impacts.find((x) => x.monetisable); im.kpis[0] = { ...im.kpis[0], id: "industrial_manufacturing.made_up", definition: "" }; }, /without a full definition/],
   ["assess", "low above high", (a) => { const im = a.impacts.find((x) => x.monetisable); [im.eur_year_low, im.eur_year_high] = [im.eur_year_high + 10, im.eur_year_low]; }, /runs backwards/],
   ["assess", "an issue without its assessment", (a) => { a.impacts.pop(); }, /has 0 assessments/],
+  ...PRICING.map(([what, change, words]) => ["assess", what, change, words]),
   ["strategise", "a type that does not match its items", (a) => { a.strategies[0].type = a.strategies[0].type === "SO" ? "WT" : "SO"; }, /pairs|kind is/],
   ["strategise", "a kind that does not match its type", (a) => { a.strategies[0].kind = a.strategies[0].kind === "advantage" ? "mitigate" : "advantage"; }, /so its kind is/],
   ["strategise", "a residual above the issue's", (a) => { const s = a.strategies.find((x) => x.kind === "mitigate"); s.residual[0] = { ...s.residual[0], likelihood: 5, eur_year_low: 9e8, eur_year_high: 9.9e8 }; }, /leaves more at risk/],
@@ -63,6 +84,41 @@ for (const [step, what, change, words, extra] of PLANTED) {
   change(answer);
   const problems = answerProblems(step, answer, { ...ctx[step], ...(extra || {}) });
   check(problems.length > 0 && problems.some((p) => words.test(p)), `${step} refuses ${what}${problems.length ? `: "${problems.find((p) => words.test(p)) || problems[0]}"` : ": nothing refused"}`);
+}
+
+// ---- the Analyst's last resort (1.0.1) ----------------------------------------------------------------------
+const WORDS = { setAside: "Code left this estimate out", noReason: "No reason given" };
+{
+  const s = setAsidePricing(clone(A.assess), ctx.assess, WORDS);
+  check(JSON.stringify(s.answer) === JSON.stringify(A.assess) && s.setAside.length === 0, "the last resort leaves a valid answer exactly as it is");
+}
+for (const [what, change] of PRICING) {
+  const answer = clone(A.assess);
+  change(answer);
+  const before = answer.impacts.map((x) => ({ ...x }));
+  const s = setAsidePricing(answer, ctx.assess, WORDS);
+  const changed = s.answer.impacts.filter((x, i) => JSON.stringify(x) !== JSON.stringify(before[i]));
+  const im = changed[0];
+  const wasPriced = im && before.find((x) => x.issue === im.issue).monetisable;
+  const reasonOk = im && (wasPriced ? im.reason === WORDS.setAside : im.reason === (before.find((x) => x.issue === im.issue).reason || WORDS.noReason));
+  check(answerProblems("assess", s.answer, ctx.assess).length === 0 && changed.length === 1 && im.monetisable === false && im.kpis.length === 0 && im.eur_year_low === 0 && im.eur_year_high === 0 && reasonOk && JSON.stringify(s.setAside) === JSON.stringify(wasPriced ? [im.issue] : []),
+    `the last resort settles ${what}: ${im ? `${im.issue} becomes not priced ("${im.reason}")${wasPriced ? " and is listed as set aside" : ""}` : "nothing changed"}, every other assessment untouched`);
+}
+// What the last resort must leave to the stop: these are not a figure's faults.
+const STOPS = [
+  ["weights that miss 1 by more than 0.05", (a) => { a.factors.filter((f) => /^[sw]/.test(f.item)).forEach((f) => { f.weight *= 1.2; }); }],
+  ["a strength below 3", (a) => { a.factors.find((f) => f.item.startsWith("s")).rating = 2; }],
+  ["a weakness above 2", (a) => { a.factors.find((f) => f.item.startsWith("w")).rating = 3; }],
+  ["an issue without its assessment", (a) => { a.impacts.pop(); }],
+  ["an issue assessed twice", (a) => { a.impacts.push(clone(a.impacts[0])); }],
+  ["an assessment of an issue that does not exist", (a) => { a.impacts.push({ ...clone(a.impacts[0]), issue: "I9" }); }],
+  ["a priced issue without a KPI next to a weight that misses 1", (a) => { priced(a).kpis = []; a.factors.filter((f) => /^[ot]/.test(f.item)).forEach((f) => { f.weight *= 1.3; }); }]
+];
+for (const [what, change] of STOPS) {
+  const answer = clone(A.assess);
+  change(answer);
+  const left = answerProblems("assess", setAsidePricing(answer, ctx.assess, WORDS).answer, ctx.assess);
+  check(left.length > 0, `the last resort leaves ${what} to the stop: "${left[0] || "nothing left"}"`);
 }
 
 for (const [ok, what] of results) console.log(`${ok ? "PASS" : "FAIL"}  ${what}`);

@@ -1,6 +1,6 @@
 # Technical notes
 
-Version 1.0.0 (M5 Release), 24 November 2026. These notes record what was checked at source, with the date, and the decisions the code rests on. PLAN.md is the plan Victor approved on 23 November 2026, with the eleven cuts of its design review. Where the code says "brief 6.4", it means section 6.4 of Victor's build brief, which is not part of this repository.
+Version 1.0.1 (a fix), 25 November 2026. These notes record what was checked at source, with the date, and the decisions the code rests on. PLAN.md is the plan Victor approved on 23 November 2026, with the eleven cuts of its design review. Where the code says "brief 6.4", it means section 6.4 of Victor's build brief, which is not part of this repository.
 
 ## 1. Models and prices
 
@@ -167,7 +167,7 @@ The Scout gets the API's web search (five searches) and the strict client tool `
 
 ### 11.6 Guards and the repair
 
-`js/guards.js` holds the refusals of PLAN.md 3.1; the scenario checker applies the same guards to the recorded scenarios. An answer that breaks its schema or a guard gets one repair: one user message with the input, the answer that failed and its problems. At most one repair a step and two a run; a second failure stops the run with what is done and offers Thorough or a simulation. The Writer's text that fails the fact audit twice shows with an "Unchecked" tag instead. `tests/guards.mjs` plants each refusal.
+`js/guards.js` holds the refusals of PLAN.md 3.1; the scenario checker applies the same guards to the recorded scenarios. An answer that breaks its schema or a guard gets one repair: one user message with the input, the answer that failed and its problems. At most one repair a step and two a run; a second failure stops the run with what is done and offers Thorough or a simulation. Two answers are kept instead: the Writer's text that fails the fact audit twice shows with an "Unchecked" tag, and since 1.0.1 an Analyst's figure that still breaks a pricing rule is set aside (section 14). `tests/guards.mjs` plants each refusal.
 
 ### 11.7 Errors
 
@@ -280,3 +280,35 @@ An agent that did not build the tool reviewed the release candidate on 24 Novemb
 - **Vici.** A report printed from the dark theme with background graphics sat in a black frame, since the page's margins take the canvas colour of the root's scheme. This tool fixed it in Vici (pull request 46, merged on 24 November 2026): in print the page takes the light scheme. `tests/report.mjs` checks it here too.
 - **CI and the page's late focus.** After Fill in, and after an item is added, the page gives the focus back a frame later. On CI's slower machines a test that typed at once could have its text land in the field the focus moved to: the line about the company stayed empty, or an IBAN landed in Strengths. The suites now wait for that focus first (`filledIn()` in `tests/lib/live-page.mjs`); a person types far slower than a frame. The live keyboard walk and the private-data warning also say what they saw when they fail.
 - **Focus behind the bar.** While checking the fixes, the keyboard suite learned to fail a focus that lands behind the bar at the story's foot (WCAG 2.2, 2.4.11). Without the fix below it finds 16 such stops in the four walks, among them Show the numbers, the issue buttons, the company picker and the check's Edit and Remove. The story column's scroll padding now follows the bar's height, set by a `ResizeObserver`.
+
+## 14. The fix (1.0.1)
+
+A live run of Victor's on 25 November 2026 stopped at the Analyst: "The agent could not give a valid answer. The Analyst broke the rules twice." Under What was wrong it said "I6 is priced but moves no KPI; name one to three." Version 1.0.1 keeps such a run going.
+
+### 14.1 Why it stopped
+
+- The Analyst's schema had one shape for every issue: `monetisable` true or false, then zero to three KPIs. So the API's grammar let a priced issue go out without a KPI. Only the prompt and the guards asked for one.
+- The repair's sentence named one way out, "name one to three". A small model at low effort that found no KPI to fit gave the same answer again.
+- A second failure stopped the run, as PLAN.md 3.1 planned. One figure in an otherwise sound answer ended a run the person had paid for.
+
+A run driven through `js/pipeline.js` reproduces it: when the Analyst answers this way twice, 1.0.0 stops with the same sentence. `tests/unit.mjs` drives the case against 1.0.1.
+
+### 14.2 The fix
+
+- **The wire.** `schemas/swot.js` sends the Analyst's impact in two shapes (`WIRE`). A priced issue gives one to three KPIs and an empty reason; one that is not priced gives zero euros. The API's grammar now holds these rules, so the answer Victor saw cannot come back. The contract that code checks keeps one shape, so the guards' sentences stay plain, and every recorded answer fits both. The pipeline, the estimate and the stand-in send or compare the same schema (`tests/schemas.mjs`).
+- **The repair.** Its sentence for a priced issue without a KPI names both ways out: one to three KPIs, or not priced with a reason.
+- **The prompt.** The Analyst reads that a euro range always rests on at least one KPI, and that a KPI going down changes by zero or less.
+- **The last resort.** Once the repair is spent, a figure that still breaks a pricing rule is set aside (`setAsidePricing` in `js/guards.js`). Its issue then reads "Not priced: The Analyst's estimate broke the rules, so code left it out" on the Assess step, in the report and in the handoff file, and the run goes on. An issue the Analyst left unpriced keeps its own reason. Weights, ratings and a missing or doubled assessment are not a figure's faults, so they still stop the run. A saved run's audit keeps every problem.
+- **The stand-in.** It now refuses any scripted answer that the API's grammar could not produce, so no test rests on an answer the real API cannot give.
+
+### 14.3 Checked at source
+
+Read on 25 November 2026 at https://platform.claude.com/docs/en/build-with-claude/structured-outputs: `anyOf` works except beside `type` or `properties` in the same schema object; `enum` and `const` take strings, numbers, booleans and null; arrays take `minItems` of 0 or 1. A request may hold 24 optional and 16 union-typed parameters. The Analyst's schema now has one union-typed parameter and no optional one. `refused()` in `js/wire.js` checks the first two rules as well. The prices, read again the same day at https://platform.claude.com/docs/en/about-claude/pricing, are unchanged from section 1.
+
+### 14.4 The probe
+
+This session has no key, so no request of 1.0.1 has reached the real API. Victor got a console script with the pull request. It sends the Analyst's real request for Arvento Drives with the new schema to Haiku 5.5 at low effort, for about $0.002, and says whether the API takes the schema and whether the answer keeps the rules. Its result goes here once he has run it. If the API refuses the schema, the wire change comes out again and the last resort stays.
+
+### 14.5 Where 1.0.1 differs from PLAN.md
+
+PLAN.md 3.1 lets every second failure stop the run. Since 1.0.1 the Analyst's figures are an exception, as the Writer's text has been since 0.3.0: a figure that still breaks a pricing rule is set aside. PLAN.md's Assess row says so.

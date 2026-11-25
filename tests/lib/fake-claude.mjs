@@ -7,11 +7,14 @@
 // Every request is checked against the rules the live run must follow (AC-08): the key and both headers,
 // streaming, the preset's model, effort and thinking, the step's schema in output_config.format, one
 // system prompt of a known agent, one user message (two turns only for the Scout), at most ten requests,
-// and pause_turn sent again unchanged. Violations are collected for the test to report.
+// and pause_turn sent again unchanged. The script is held to the API too (1.0.1): a structured answer that
+// ends normally must fit the schema the request sent, since the API's grammar lets no other come back.
+// Violations are collected for the test to report.
 import { isDeepStrictEqual } from "node:util";
 import { systemFor } from "../../js/prompts.js";
 import { toWire } from "../../js/wire.js";
-import { SCHEMAS, REQUESTS } from "../../schemas/swot.js";
+import { validate as fitsSchema, describeErrors } from "../../js/schema.js";
+import { SCHEMAS, REQUESTS, WIRE } from "../../schemas/swot.js";
 import { MODELS } from "../../js/config.js";
 
 export const CORS = { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-expose-headers": "*" };
@@ -114,14 +117,14 @@ export function createFakeClaude(script, { expect = null, key = null } = {}) {
     }
     if (step && step !== "research") {
       check(req.messages.length === 1, `a ${step} request carries one message, not ${req.messages.length}`);
-      check(req.output_config?.format?.type === "json_schema" && isDeepStrictEqual(req.output_config.format.schema, toWire(SCHEMAS[REQUESTS[step]], SCHEMAS)), `the ${step} request's output_config.format is not its schema`);
+      check(req.output_config?.format?.type === "json_schema" && isDeepStrictEqual(req.output_config.format.schema, toWire(SCHEMAS[REQUESTS[step]], WIRE)), `the ${step} request's output_config.format is not its schema`);
       check(!req.tools, `a ${step} request sends tools`);
     }
     if (step === "research") {
       check(req.tool_choice?.type === "auto", "the Scout's tool_choice is not auto");
       // Five searches at most; fewer where the budget cap leaves room for fewer (js/pipeline.js, scout).
       check(req.tools?.some((t) => t.type === "web_search_20250305" && Number.isInteger(t.max_uses) && t.max_uses >= 1 && t.max_uses <= 5), "the Scout's web search is not one to five searches");
-      check(req.tools?.some((t) => t.name === "submit_signals" && t.strict === true && isDeepStrictEqual(t.input_schema, toWire(SCHEMAS.Signals, SCHEMAS))), "submit_signals is not the strict tool with the Signals schema");
+      check(req.tools?.some((t) => t.name === "submit_signals" && t.strict === true && isDeepStrictEqual(t.input_schema, toWire(SCHEMAS.Signals, WIRE))), "submit_signals is not the strict tool with the Signals schema");
       check(!req.output_config?.format, "the Scout sends an output format");
       // pause_turn: the conversation comes back unchanged, the paused turn last.
       const prev = requests[requests.length - 2];
@@ -149,6 +152,12 @@ export function createFakeClaude(script, { expect = null, key = null } = {}) {
       if (r.network) return { abort: true };
       if (r.error) {
         return { status: r.error.status, headers: { "content-type": "application/json", ...(r.error.headers || {}) }, body: JSON.stringify({ type: "error", error: { type: r.error.type, message: r.error.message, ...(r.error.details ? { details: r.error.details } : {}) }, request_id: `req_${requests.length}` }) };
+      }
+      if (step && step !== "research" && r.stop === "end_turn") {
+        let answer;
+        try { answer = JSON.parse(r.blocks.filter((b) => b.type === "text").map((b) => b.text).join("")); } catch { answer = undefined; }
+        const fit = answer === undefined ? null : fitsSchema(answer, req.output_config?.format?.schema || {});
+        if (fit && !fit.valid) violations.push(`request ${requests.length} (${step}): the script answers what the API's grammar could not produce: ${describeErrors(fit.errors).split("\n")[0]}`);
       }
       entry.stop = r.stop;
       entry.echo = echoOf(r.blocks);

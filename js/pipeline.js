@@ -3,7 +3,9 @@
 // the step's schema), thinking as the setting says, one system prompt and one user message that carries
 // the run so far as JSON; no conversation is carried. Code checks every answer against its schema and the
 // guards of brief 6.7 (js/guards.js); a failing answer gets one repair with its problems listed, at most
-// two in a run, and a second failure stops the run with what is done. Before each request the budget cap
+// two in a run, and a second failure stops the run with what is done. Two answers are kept instead: the
+// Writer's text, shown unchecked, and the Analyst's, whose figures that still break a pricing rule are set
+// aside, so their issues show as not priced (1.0.1). Before each request the budget cap
 // is checked against the request's worst case (js/budget.js); after it, the meter adds the usage the API
 // reports (js/cost.js). Errors are retried as brief 5.8 says (js/anthropic.js) and otherwise stop the run
 // with what is done. Abort stops the request in flight and keeps what is done.
@@ -19,9 +21,10 @@ import { getKey, redactSecrets } from "./keystore.js";
 import { createCostTracker, normalizeUsage } from "./cost.js";
 import { planRequest, tokensIn } from "./budget.js";
 import { systemFor, inputFor, repairFor, AGENTS, SUBMIT_SIGNALS } from "./prompts.js";
-import { answerProblems, schemaProblems } from "./guards.js";
+import { answerProblems, schemaProblems, setAsidePricing } from "./guards.js";
+import { t } from "./i18n/index.js";
 import { toWire } from "./wire.js";
-import { SCHEMAS, REQUESTS } from "../schemas/swot.js";
+import { SCHEMAS, REQUESTS, WIRE } from "../schemas/swot.js";
 import { assemble, factsFor } from "./scenario.js";
 import { CHOICE_FACTS, FOLLOWS_CHOICE } from "./facts.js";
 import { searchedUrls, deferredSearches, submissions, sortSignals, refusalFor, acceptanceFor, REMINDER, MAX_SCOUT_REQUESTS } from "./scout.js";
@@ -95,7 +98,7 @@ export function createLiveRun({ recording, settings: initialSettings, capEur: in
   const audit = [];
   const st = {
     status: "ready", step: null, stepStarted: 0, startedAt: null, finishedAt: null,
-    requests: 0, repairs: 0, stop: null, retry: null, research: null, unchecked: null, lowered: [],
+    requests: 0, repairs: 0, stop: null, retry: null, research: null, unchecked: null, lowered: [], setAside: [],
     sectorChosen: rec.company.sector || null, checked: false
   };
   let controller = null;
@@ -160,7 +163,7 @@ export function createLiveRun({ recording, settings: initialSettings, capEur: in
     return {
       model: settings.model,
       system: systemFor(step),
-      output_config: { effort: settings.effort, format: { type: "json_schema", schema: toWire(SCHEMAS[REQUESTS[step]], SCHEMAS) } },
+      output_config: { effort: settings.effort, format: { type: "json_schema", schema: toWire(SCHEMAS[REQUESTS[step]], WIRE) } },
       ...(settings.thinking ? { thinking: settings.thinking } : {})
     };
   }
@@ -176,7 +179,20 @@ export function createLiveRun({ recording, settings: initialSettings, capEur: in
     return { text, answer, problems: answerProblems(step, answer, ctx) };
   }
 
-  /** One step's request, checked, with one repair; a second failure stops the run (the Writer's text shows unchecked). */
+  /**
+   * What an answer that still fails, with no repair left, may keep instead of stopping the run: the
+   * Writer's text shows unchecked; the Analyst's figures that break a pricing rule are set aside, so their
+   * issues show as not priced (1.0.1). Null: nothing, the run stops.
+   */
+  function settle(step, r, ctx) {
+    if (!r.answer || schemaProblems(step, r.answer).length) return null;
+    if (step === "summary") return { answer: r.answer, unchecked: r.problems };
+    if (step !== "assess") return null;
+    const s = setAsidePricing(r.answer, ctx, { setAside: t("s.assess.setaside", null, lang), noReason: t("h.not.priced.none", null, lang) });
+    return answerProblems(step, s.answer, ctx).length ? null : s;
+  }
+
+  /** One step's request, checked, with one repair; a second failure stops the run unless settle() can keep it. */
   async function structured(step, ctxFor, opts = {}) {
     const input = inputFor(step, current(), { lang, today, ...opts });
     const body = structuredBody(step);
@@ -184,18 +200,16 @@ export function createLiveRun({ recording, settings: initialSettings, capEur: in
     let r = read(step, message, ctxFor());
     if (!r.problems.length) return { answer: r.answer };
     audit[audit.length - 1].problems = r.problems.slice(0, 64);
-    const schemaOk = r.answer && !schemaProblems(step, r.answer).length;
-    if (st.repairs >= 2) {
-      if (step === "summary" && schemaOk) return { answer: r.answer, unchecked: r.problems };
-      throw new StopRun("invalid", step, { problems: r.problems });
+    if (st.repairs < 2) {
+      st.repairs += 1;
+      emit("repair", { step, problems: r.problems });
+      message = await send(step, { ...body, messages: [{ role: "user", content: repairFor(input, r.text, r.problems) }] }, { repaired: true });
+      r = read(step, message, ctxFor());
+      if (!r.problems.length) return { answer: r.answer };
+      audit[audit.length - 1].problems = r.problems.slice(0, 64);
     }
-    st.repairs += 1;
-    emit("repair", { step, problems: r.problems });
-    message = await send(step, { ...body, messages: [{ role: "user", content: repairFor(input, r.text, r.problems) }] }, { repaired: true });
-    r = read(step, message, ctxFor());
-    if (!r.problems.length) return { answer: r.answer };
-    audit[audit.length - 1].problems = r.problems.slice(0, 64);
-    if (step === "summary" && r.answer && !schemaProblems(step, r.answer).length) return { answer: r.answer, unchecked: r.problems };
+    const kept = settle(step, r, ctxFor());
+    if (kept) return kept;
     throw new StopRun("invalid", step, { problems: r.problems });
   }
 
@@ -221,8 +235,9 @@ export function createLiveRun({ recording, settings: initialSettings, capEur: in
     },
 
     async assess() {
-      const { answer } = await structured("assess", () => { const r = current(); return { items: r.items, issues: r.issues, sector: r.sector }; });
+      const { answer, setAside = [] } = await structured("assess", () => { const r = current(); return { items: r.items, issues: r.issues, sector: r.sector }; });
       answers().assess = answer;
+      st.setAside = setAside;
     },
 
     async strategise() {
@@ -249,7 +264,7 @@ export function createLiveRun({ recording, settings: initialSettings, capEur: in
    */
   async function scout() {
     const input = inputFor("research", current(), { lang, today });
-    const submit = { name: SUBMIT_SIGNALS.name, description: SUBMIT_SIGNALS.description, input_schema: toWire(SCHEMAS.Signals, SCHEMAS), strict: true };
+    const submit = { name: SUBMIT_SIGNALS.name, description: SUBMIT_SIGNALS.description, input_schema: toWire(SCHEMAS.Signals, WIRE), strict: true };
     const bodyWith = (uses) => ({
       model: settings.model,
       system: systemFor("research"),

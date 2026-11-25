@@ -94,21 +94,7 @@ export function assessmentProblems(answer, { items, issues, sector }) {
   }
   for (const im of answer.impacts) {
     if (!issueIds.includes(im.issue)) out.push(`An assessment names ${im.issue}, which is not an issue.`);
-    if (im.monetisable) {
-      if (!(im.eur_year_low <= im.eur_year_high)) out.push(`The euro range of ${im.issue} runs backwards: low ${im.eur_year_low} is above high ${im.eur_year_high}.`);
-      if (!(im.eur_year_high > 0)) out.push(`${im.issue} is priced at nothing; price it or say why it can't be.`);
-      if (!im.kpis.length) out.push(`${im.issue} is priced but moves no KPI; name one to three.`);
-      if (im.reason) out.push(`${im.issue} is priced, so its reason for not being priced stays empty.`);
-    } else if (!im.reason || im.kpis.length || im.eur_year_low !== 0 || im.eur_year_high !== 0) {
-      out.push(`${im.issue} is not priced, so it gives a reason, no KPI and zero euros.`);
-    }
-    for (const k of im.kpis) {
-      const kSector = k.id.split(".")[0];
-      if (!KPI_IDS.has(k.id) && !k.definition) out.push(`${im.issue} uses ${k.id}, which the library lacks, without a full definition.`);
-      if (KPI_IDS.has(k.id) && ![sector, "general"].includes(kSector)) out.push(`${im.issue} uses ${k.id} from another sector than ${sector}.`);
-      if (!(k.change_low <= k.change_high)) out.push(`${im.issue}: the change of ${k.id} runs backwards.`);
-      if (k.direction === "down" ? k.change_high > 0 : k.change_low < 0) out.push(`${im.issue}: ${k.id} goes ${k.direction}, but its change says otherwise.`);
-    }
+    out.push(...pricingProblems(im, sector));
   }
   const factorIds = answer.factors.map((f) => f.item);
   for (const it of items) {
@@ -126,6 +112,45 @@ export function assessmentProblems(answer, { items, issues, sector }) {
     if (Math.abs(sum - 1) > REFUSE_TOLERANCE) out.push(`The ${side} weights add up to ${sum}; they add up to 1.`);
   }
   return out;
+}
+
+/** What is wrong with one assessment's figure: its euros and the KPIs they rest on. */
+export function pricingProblems(im, sector) {
+  const out = [];
+  if (im.monetisable) {
+    if (!(im.eur_year_low <= im.eur_year_high)) out.push(`The euro range of ${im.issue} runs backwards: low ${im.eur_year_low} is above high ${im.eur_year_high}.`);
+    if (!(im.eur_year_high > 0)) out.push(`${im.issue} is priced at nothing; price it or say why it can't be.`);
+    if (!im.kpis.length) out.push(`${im.issue} is priced but moves no KPI. Name one to three KPIs it moves; where none fits, set monetisable to false with a reason, no KPI and zero euros.`);
+    if (im.reason) out.push(`${im.issue} is priced, so its reason for not being priced stays empty.`);
+  } else if (!im.reason || im.kpis.length || im.eur_year_low !== 0 || im.eur_year_high !== 0) {
+    out.push(`${im.issue} is not priced, so it gives a reason, no KPI and zero euros.`);
+  }
+  for (const k of im.kpis) {
+    const kSector = k.id.split(".")[0];
+    if (!KPI_IDS.has(k.id) && !k.definition) out.push(`${im.issue} uses ${k.id}, which the library lacks, without a full definition.`);
+    if (KPI_IDS.has(k.id) && ![sector, "general"].includes(kSector)) out.push(`${im.issue} uses ${k.id} from another sector than ${sector}.`);
+    if (!(k.change_low <= k.change_high)) out.push(`${im.issue}: the change of ${k.id} runs backwards.`);
+    if (k.direction === "down" ? k.change_high > 0 : k.change_low < 0) out.push(`${im.issue}: ${k.id} goes ${k.direction}, but its change says otherwise.`);
+  }
+  return out;
+}
+
+/**
+ * The last resort once the Analyst's repair is spent (1.0.1): each assessment whose figure still breaks a
+ * pricing rule becomes "not priced", with no KPI and zero euros, so one bad figure no longer stops a run
+ * that is otherwise sound. A figure the Analyst gave takes the tool's reason, `words.setAside`; an issue it
+ * left unpriced keeps its own reason, or `words.noReason`. Nothing else changes: weights, ratings and a
+ * missing or doubled assessment stay the guards' to refuse. Returns { answer, setAside: issue ids }.
+ */
+export function setAsidePricing(answer, { sector }, words) {
+  const setAside = [];
+  const impacts = answer.impacts.map((im) => {
+    if (!pricingProblems(im, sector).length) return im;
+    if (im.monetisable) setAside.push(im.issue);
+    const reason = im.monetisable ? words.setAside : im.reason || words.noReason;
+    return { ...im, monetisable: false, reason, kpis: [], eur_year_low: 0, eur_year_high: 0, basis: "" };
+  });
+  return { answer: { ...answer, impacts }, setAside };
 }
 
 /**

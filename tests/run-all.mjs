@@ -12,12 +12,12 @@ const SUITES = [
   { id: "page-icon", what: "page icon: favicon, header and loading screen, as on the website's card", file: "tests/page-icon.mjs", browser: false },
   { id: "vici-files", what: "vici/ holds exactly the files its README lists, unchanged", file: "tests/vici-files.mjs", browser: false },
   { id: "engine", what: "golden cases SW0 to SW3 and the handoff example: risk, factor scores, IE matrix, money, fact keys", file: "tests/engine.mjs", browser: false },
-  { id: "schemas", what: "data contracts, the wire form of every request schema, the shared handoff schema", file: "tests/schemas.mjs", browser: false },
+  { id: "schemas", what: "data contracts, the wire form of every request schema with the Analyst's two shapes, the shared handoff schema", file: "tests/schemas.mjs", browser: false },
   { id: "kpis", what: "the sector KPI library: thirteen sectors, every KPI in both languages, no benchmark value", file: "tests/kpis.mjs", browser: false, vici: true },
   { id: "scenarios", what: "the three scenarios and their checker: both languages, four choices each, every defect the brief lists caught", file: "tests/scenarios.mjs", browser: false },
   { id: "audit", what: "the fact audit on golden texts in both languages, and every summary's placeholders rendered", file: "tests/audit.mjs", browser: false },
-  { id: "unit", what: "the estimate, the budget's worst case and the 100,000-token refusal, the retries, the meter, the private-data scan, the API's errors in words, the Method dialog's worked example", file: "tests/unit.mjs", browser: false },
-  { id: "guards", what: "every refusal of the live guards returns its message, and the recorded answers pass", file: "tests/guards.mjs", browser: false },
+  { id: "unit", what: "the estimate, the budget's worst case and the 100,000-token refusal, the retries, the meter, the private-data scan, the API's errors in words, the Method dialog's worked example, the Analyst's last resort", file: "tests/unit.mjs", browser: false },
+  { id: "guards", what: "every refusal of the live guards returns its message, the recorded answers pass, and the last resort settles only pricing faults", file: "tests/guards.mjs", browser: false },
   { id: "i18n", what: "both languages: keys, placeholders, defaults, no sentence typed into the code", file: "tests/i18n.mjs", browser: false },
   { id: "policy", what: "security policy, nothing loaded from elsewhere, no inline script or style, what the browser keeps", file: "tests/policy.mjs", browser: false, vici: true },
   { id: "hygiene", what: "no client, contact or meeting named in any published file", file: "tests/hygiene.mjs", browser: false },
@@ -31,7 +31,7 @@ const SUITES = [
   { id: "layout", what: "the layout at 1920 × 1080, 1440 × 900, 1366 × 768 and 1280 × 720, both themes and languages, every step and the live screens: nothing cut, nothing hidden, nothing scrolls sideways, targets at least 24 px and the primary actions at least 40 px", file: "tests/layout.mjs", browser: true },
   { id: "access", what: "the keyboard alone runs the simulation and a live run in both languages with a focus ring on every stop; reduced motion stills everything but Vici's spinner", file: "tests/access.mjs", browser: true },
   { id: "hexagon", what: "nothing round: the app's files, and the rendered page in both themes", file: "tests/hexagon.mjs", browser: true },
-  { id: "live", what: "the live run against a scripted stand-in for the API: requests, repair, Abort, cap and meter, errors and retries, the dialog, research, the check, nothing kept, the screens nobody demos, Save run as simulation", file: "tests/live.mjs", browser: true, vici: true },
+  { id: "live", what: "the live run against a scripted stand-in for the API: requests, repair, Abort, cap and meter, errors and retries, the dialog, research, the check, nothing kept, the screens nobody demos, Save run as simulation, a figure set aside", file: "tests/live.mjs", browser: true, vici: true },
   { id: "report", what: "the report and its downloads: the PDF's footer on every page, the HTML file that loads nothing, the file for the Prototype Ideator, the tiles' figures, the Summary step, a live run's report, the file names", file: "tests/report.mjs", browser: true, ideator: true }
 ];
 

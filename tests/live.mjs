@@ -28,13 +28,20 @@
 //            SCREENS OK
 //   save     "Save run as simulation" downloads a recording the scenario rules accept for its language,
 //            without key or thinking, and the player plays it                                       SAVE RUN OK
+//   aside    the Analyst's figure that breaks a pricing rule in its answer and its repair is set aside:
+//            the run goes on, and the issue reads "not priced" with the tool's reason on the Assess step,
+//            in the report and in the file for the Prototype Ideator; a broken rating still stops the run;
+//            the stand-in refuses a script the API's grammar could not produce (1.0.1)        SET ASIDE OK
 // Every case fails on a page error, an unexpected console error, a policy violation, a request to a host
 // other than the stand-in, or a protocol violation the stand-in found. Usage: node tests/live.mjs [group…]
 import path from "node:path";
 import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { APP_ROOT, ONLY, launchBrowser, serveStatic, MOCK_KEY, viciDir, REQUIRE_VICI } from "./lib/harness.mjs";
-import { json, thinking, tool, search, MODELS_LIST, toolResults } from "./lib/fake-claude.mjs";
+import { json, thinking, tool, search, MODELS_LIST, toolResults, createFakeClaude } from "./lib/fake-claude.mjs";
+import { systemFor } from "../js/prompts.js";
+import { toWire } from "../js/wire.js";
+import { SCHEMAS, WIRE } from "../schemas/swot.js";
 import { SCEN, HAIKU, answers, scripted, openLivePage, closeLivePage, state, until, toDialog, startRun, wholeRun, text, filledIn } from "./lib/live-page.mjs";
 import { MODELS, FX_USD_EUR, BUDGET } from "../js/config.js";
 import { usageCostUsd } from "../js/cost.js";
@@ -46,8 +53,8 @@ import DE from "../js/i18n/de.js";
 
 const DICT = { en: EN, de: DE };
 const T = (lang, key, vars = {}) => DICT[lang][key].replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
-const GROUPS = ["ac08", "ac09", "ac10", "ac11", "ac12", "ac18", "ac19", "ac02", "screens", "save"];
-const LINES = { ac08: "AC-08 OK", ac09: "AC-09 OK", ac10: "AC-10 OK", ac11: "AC-11 OK", ac12: "AC-12 OK", ac18: "AC-18 OK", ac19: "AC-19 OK", ac02: "AC-02 OK", screens: "SCREENS OK", save: "SAVE RUN OK" };
+const GROUPS = ["ac08", "ac09", "ac10", "ac11", "ac12", "ac18", "ac19", "ac02", "screens", "save", "aside"];
+const LINES = { ac08: "AC-08 OK", ac09: "AC-09 OK", ac10: "AC-10 OK", ac11: "AC-11 OK", ac12: "AC-12 OK", ac18: "AC-18 OK", ac19: "AC-19 OK", ac02: "AC-02 OK", screens: "SCREENS OK", save: "SAVE RUN OK", aside: "SET ASIDE OK" };
 const run = ONLY.length ? GROUPS.filter((g) => ONLY.includes(g)) : GROUPS;
 const unknownGroups = ONLY.filter((g) => !GROUPS.includes(g));
 if (unknownGroups.length) { console.log(`FAIL  unknown group ${unknownGroups.join(", ")}; the groups are ${GROUPS.join(", ")}`); process.exit(1); }
@@ -703,8 +710,66 @@ async function keyTyped() {
   await closePage(p, "key typed");
 }
 
+// ---- ASIDE (1.0.1) -----------------------------------------------------------------------------------------
+// Victor's live run of 25 November 2026 stopped because the Analyst priced an issue without a KPI, twice.
+// The wire now holds that rule (tests/schemas.mjs), so the stand-in plants the nearest fault the API's
+// grammar still lets through: a KPI that goes down while its change goes up, in the answer and the repair.
+async function aside() {
+  // The stand-in itself: Victor's answer is one the grammar could not produce, so a script that sends it fails.
+  {
+    const a = answers("s2", "en");
+    const noKpi = clone(a.assess);
+    noKpi.impacts.find((x) => x.monetisable).kpis = [];
+    const fake = createFakeClaude(() => ({ blocks: [json(noKpi)], stop: "end_turn" }));
+    const req = { model: "claude-haiku-5-5", max_tokens: 8000, stream: true, system: systemFor("assess"), messages: [{ role: "user", content: "{}" }], output_config: { effort: "low", format: { type: "json_schema", schema: toWire(SCHEMAS.Assessment, WIRE) } } };
+    fake.handle(JSON.stringify(req), { "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" });
+    check(fake.violations.some((v) => /grammar could not produce/.test(v)), `the stand-in refuses a script whose answer the API's grammar could not produce: a priced issue without a KPI ("${fake.violations.find((v) => /grammar/.test(v)) || "nothing refused"}")`);
+  }
+  for (const lang of ["en", "de"]) {
+    const L = DICT[lang];
+    const a = answers("s2", lang);
+    const bad = clone(a.assess);
+    const victim = [...bad.impacts].reverse().find((x) => x.monetisable).issue;
+    Object.assign(bad.impacts.find((x) => x.issue === victim).kpis[0], { direction: "down", change_low: 1, change_high: 3 });
+    const p = await livePage({ lang, script: scripted(a, { fault: (n, req, step) => (step === "assess" ? { blocks: [json(bad)], stop: "end_turn" } : null) }) });
+    const s = await wholeRun(p.page);
+    const assess = p.fake.requests.filter((r) => r.step === "assess");
+    const repair = assess[1]?.req.messages[0].content || "";
+    check(s.live.status === "done" && p.fake.requests.length === 6 && assess.length === 2 && /goes down, but its change says otherwise/.test(repair), `${lang}: a figure whose KPI runs against its change, in the answer and the repair, no longer stops the run: the repair names the fault, and the run goes on to the summary (${p.fake.requests.map((r) => r.step).join(",")})`);
+    const line = T(lang, "s.assess.unpriced", { reason: L["s.assess.setaside"] });
+    const [d] = await Promise.all([p.page.waitForEvent("download"), p.page.click("#rp-json")]);
+    const file = JSON.parse(await readFile(await d.path(), "utf8"));
+    const hi = file.issues.find((i) => i.id === victim);
+    check(hi && hi.eur_year_low === null && hi.eur_year_high === null && hi.eur_year_expected === null && hi.eur_basis === line, `${lang}: the file for the Prototype Ideator gives ${victim} no euros and "${hi?.eur_basis}"`);
+    await p.page.click("#rp-open");
+    await p.page.waitForSelector("#report-dialog[open]");
+    const report = await text(p.page, "#report");
+    check(report.includes(line), `${lang}: the report says "${line}"`);
+    await p.page.keyboard.press("Escape");
+    await p.page.click('.vc-step[data-step="assess"] .vc-step__button');
+    await p.page.waitForFunction(() => window.__swot.state().step === 3);
+    const card = await text(p.page, `.issue[data-issue="${victim}"] .issue__money`);
+    check(card === line && !(await p.page.$(`.issue[data-issue="${victim}"] .issue__kpis`)), `${lang}: on the Assess step, ${victim} reads "${card}", with no KPI`);
+    await closePage(p, `${lang} set aside`);
+  }
+  // The negative control: a rating outside David's scale is no figure's fault, so the run stops as in 1.0.0.
+  {
+    const a = answers("s2", "en");
+    const bad = { ...clone(a.assess), factors: a.assess.factors.map((f) => (f.item === "s1" ? { ...f, rating: 2 } : f)) };
+    const p = await livePage({ script: scripted(a, { fault: (n, req, step) => (step === "assess" ? { blocks: [json(bad)], stop: "end_turn" } : null) }) });
+    await toDialog(p.page);
+    await startRun(p.page);
+    await until(p.page, ["check"]);
+    await p.page.click("#btn-cta");
+    const s = await until(p.page, ["stopped"]);
+    const words = await story(p.page);
+    check(s.live.stop?.reason === "invalid" && s.live.stop.step === "assess" && words.includes(EN["x.invalid.title"]) && p.fake.requests.filter((r) => r.step === "assess").length === 2, "a strength rated 2 in the Analyst's answer and its repair still stops the run with \"could not give a valid answer\"");
+    await closePage(p, "rating stops");
+  }
+}
+
 // ---- run ------------------------------------------------------------------------------------------------
-const FN = { ac08, ac09, ac10, ac11, ac12, ac18, ac19, ac02, screens, save };
+const FN = { ac08, ac09, ac10, ac11, ac12, ac18, ac19, ac02, screens, save, aside };
 let failedGroups = 0;
 try {
   for (const g of run) {

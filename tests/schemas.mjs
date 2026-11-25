@@ -9,7 +9,7 @@ import path from "node:path";
 import { APP_ROOT } from "./lib/harness.mjs";
 import { validate, describeErrors } from "../js/schema.js";
 import { toWire, refused, countParameters } from "../js/wire.js";
-import { SCHEMAS, REQUESTS, STRATEGY_KINDS } from "../schemas/swot.js";
+import { SCHEMAS, REQUESTS, STRATEGY_KINDS, WIRE } from "../schemas/swot.js";
 import HANDOFF_MODULE from "../schemas/strategy-challenge-1.js";
 
 const read = (f) => readFileSync(path.join(APP_ROOT, f), "utf8");
@@ -120,6 +120,7 @@ control(refused({ type: "object", additionalProperties: false, properties: { a: 
 const counted = countParameters({ type: "object", required: ["a"], properties: { a: { type: ["string", "null"] }, b: { anyOf: [{ type: "string" }, { type: "integer" }] } } });
 control(counted.optional === 1 && counted.union === 2, "control: countParameters counts an optional and two union-typed parameters");
 control(!ok({ ...VALID.Item, text: "x".repeat(91) }, "Item").valid, "control: the validator refuses a text over its limit");
+control(refused({ type: "object", additionalProperties: false, properties: {}, anyOf: [{ type: "string" }] }).some((x) => /anyOf beside type/.test(x)) && refused({ const: [] }).some((x) => /const with a value/.test(x)) && refused({ enum: ["a", { b: 1 }] }).some((x) => /enum with a value/.test(x)) && !refused({ anyOf: [{ type: "string" }, { type: "number", const: 0 }] }).length, "control: refused() finds an anyOf beside type and an enum or const that is not a scalar, and lets an anyOf of its own pass");
 
 // ---- every contract: valid accepted, broken refused --------------------------------------------------------
 for (const name of Object.keys(SCHEMAS)) {
@@ -135,14 +136,32 @@ check(Object.entries(STRATEGY_KINDS).every(([type, kind]) => (/^[SW]O$/.test(typ
 
 // ---- the request schemas on the wire ------------------------------------------------------------------
 for (const [step, name] of Object.entries(REQUESTS)) {
-  const wire = toWire(SCHEMAS[name], SCHEMAS);
+  const wire = toWire(SCHEMAS[name], WIRE);
   const bad = refused(wire);
   check(!bad.length, `${step} (${name}): the wire schema carries no keyword the API refuses${bad.length ? `: ${bad.slice(0, 5).join("; ")}` : ""}`);
   const n = countParameters(wire);
   check(n.optional <= 24 && n.union <= 16, `${step} (${name}): ${n.optional} optional and ${n.union} union-typed parameters (limits 24 and 16)`);
   check(validate(VALID[name], wire).valid, `${step} (${name}): a valid answer still passes the wire schema`);
 }
-const wireCompletion = toWire(SCHEMAS.Completion, SCHEMAS);
+// The Analyst's impact goes out in two shapes (1.0.1), so the grammar holds the pricing rules: a priced
+// issue moves at least one KPI and gives no reason, and one that is not priced gives zero euros. Every
+// recorded answer still fits; 1.0.0's single shape let a priced issue without a KPI through.
+const wireAssess = toWire(SCHEMAS.Assessment, WIRE);
+const flatAssess = toWire(SCHEMAS.Assessment, SCHEMAS);
+const withImpact = (change) => { const x = clone(VALID.Assessment); change(x.impacts[0]); return x; };
+const notPriced = { issue: "I1", monetisable: false, reason: "A claim without evidence costs nothing by itself", kpis: [], eur_year_low: 0, eur_year_high: 0, basis: "", confidence: "high" };
+control(validate(withImpact((im) => { im.kpis = []; }), flatAssess).valid, "control: 1.0.0's wire form lets a priced issue without a KPI through");
+check(!validate(withImpact((im) => { im.kpis = []; }), wireAssess).valid, "the Analyst's wire schema refuses a priced issue without a KPI");
+check(!validate(withImpact((im) => { im.reason = "No reason needed"; }), wireAssess).valid, "the Analyst's wire schema refuses a priced issue with a reason for not being priced");
+check(!validate({ ...VALID.Assessment, impacts: [{ ...notPriced, eur_year_high: 200000 }] }, wireAssess).valid && validate({ ...VALID.Assessment, impacts: [notPriced] }, wireAssess).valid, "the Analyst's wire schema refuses euros on an issue that is not priced, and takes one with a reason and zero euros");
+for (const id of ["s1", "s2", "s3"]) {
+  const scenario = (await import(`../data/scenarios/${id}.js`)).default;
+  for (const lang of ["en", "de"]) {
+    const r = validate(scenario.answers[lang].assess, wireAssess);
+    check(r.valid, `${id} in ${lang === "en" ? "English" : "German"}: the recorded Analyst answer fits the wire schema${r.valid ? "" : `: ${describeErrors(r.errors)}`}`);
+  }
+}
+const wireCompletion = toWire(SCHEMAS.Completion, WIRE);
 check(/at most 90 characters/.test(wireCompletion.properties.items.items.properties.text.description || "") && /at most 16 items/.test(wireCompletion.properties.items.description || ""), "the wire moves a limit it takes out into the field's description, so the model still reads it");
 check(JSON.stringify(SCHEMAS.Completion).includes('"maxLength":90'), "the contract itself keeps the limit, for the check in code");
 

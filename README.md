@@ -6,9 +6,9 @@ A browser tool for SWOT analyses. A person names a company and enters what they 
 
 It is published at https://victorpflueger.github.io/SWOT-challenger/, as one of four tools made as a set: the Business Model Canvas, SWOT and PESTEL challengers and the Prototype Ideator, which turns their reports into prototype ideas.
 
-## What version 1.0.0 holds
+## What version 1.0.1 holds
 
-Three fictional companies play a recorded run with no key or cost, and Run it live puts the same agents to work on your own company with your own Claude API key. Both run six steps in English and German: Start, Complete, Challenge, Assess (factor tables and IE matrix after Fred R. David), Strategise (the TOWS matrix after Heinz Weihrich, where you choose) and Summary, which ends in the report.
+Three fictional companies play a recorded run with no key or cost, and Run it live puts the same agents to work on your own company with your Claude API key. Both run six steps in English and German: Start, Complete, Challenge, Assess (factor tables and IE matrix after Fred R. David), Strategise (the TOWS matrix after Heinz Weihrich, where you choose) and Summary, which ends in the report.
 
 The key figures at the top answer first: what is at stake a year, the items challenged, the response to the market and the run's cost; the Method dialog explains each. Underneath: the engine and 115 sector KPIs in both languages.
 
@@ -20,7 +20,7 @@ Code assembles it from the run: eight sections on A4, from the management summar
 
 Run it live opens Start as a form for the company and what your team knows of its SWOT. Start the agents opens the dialog: your key, the setting (Fast and Balanced on Haiku 5.5, Thorough on Sonnet 5.5), research (off by default), a budget cap from €0.05 to €3, your promise to enter public information only, and an estimate: about half a cent on Balanced.
 
-The run waits for you twice: to keep, edit or remove the Completer's items, and to choose the strategies. Code checks every answer and starts no request that could pass your cap, counting 12,000 tokens of results a search.
+The run waits for you twice: to keep, edit or remove the Completer's items, and to choose the strategies. Code checks every answer, leaves out an estimate that keeps breaking the rules and starts no request that could pass your cap, counting 12,000 tokens of results a search.
 
 It sends what you enter only to api.anthropic.com, under your own key, and keeps nothing: the key lives in one variable of this tab's memory, never in storage, a cookie, the address or a download. The browser remembers only your theme and language.
 
@@ -32,7 +32,7 @@ The three companies and their own figures are fictional; the facts their agents 
 
 ## Run it
 
-Serve the folder with any static server, for example `python3 -m http.server`, and open http://localhost:8000. There is no build step. `?scenario=s2&step=4` opens a scenario at a step.
+Serve the folder with any static server, for example `python3 -m http.server`, and open http://localhost:8000. There is no build step.
 
 ## Tests
 
