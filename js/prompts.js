@@ -64,7 +64,7 @@ Your job:
 ${RULES}
 Your job:
 - Propose ${LIMITS.strategiesMin} to ${LIMITS.strategiesMax} strategies, numbered R1, R2 and so on. Each is SO, WO, ST or WT and pairs at least one internal item (a strength for S, a weakness for W) with at least one external item (an opportunity for O, a threat for T).
-- Each strategy answers one issue. SO and WO turn the issue into an advantage: give an upside, the euro range a year it could gain and its likelihood, and no residual. ST and WT mitigate it: give a residual, what would still be at risk a year with its likelihood, and no upside. A residual never exceeds what the issue put at stake.
+- Each strategy answers one issue. SO and WO turn the issue into an advantage: give an upside, the euro range a year it could gain and its likelihood, and no residual. ST and WT mitigate it: give a residual, what would still be at risk a year with its likelihood, and no upside. A residual never exceeds what the issue put at stake and is never more likely than the issue. With each range, say in one sentence what it rests on, without figures, and how sure you are.
 - Give the new ratings the strategy would earn for the items it pairs, never lower than today's. A strength stays at 3 or 4 and a weakness at 1 or 2.
 - Give the effort (S, M or L), the time to impact, a concrete first step and an owner by role, never by name. Mark as recommended the strategies you would start with.
 - Prefer strategies a company of this size could start within a year.`,
@@ -74,7 +74,8 @@ ${RULES}
 Your job:
 - Write a headline, the situation, exactly three findings, a recommendation and three to five assumptions.
 - Every figure is a placeholder of the form {{fact:key}}, using only the keys in the input's facts. The input shows what each key will display, so you can judge what it means; never write the value itself.
-- Name no single strategy. Speak of the chosen strategies as a group; the page lists them with their first steps.
+- Name no single strategy, and say neither which nor how many strategies are chosen: the person may change the choice after you write, so the text must hold for any choice. Speak of "the decision" or "the chosen strategies"; the page lists them with their first steps.
+- The figures that follow the choice (left, upside and every "after" key) show as "follows the choice" in the input: cite them only as placeholders, never judged as high, low or past the average.
 - Say what the challenge found that the team's own SWOT did not show, and what the company should do first. End the assumptions with what the figures rest on: AI estimates, not measurements.`
 };
 
@@ -142,7 +143,9 @@ export function inputFor(step, run, opts = {}) {
         sector: run.sector,
         swot: run.items.map(itemOut),
         issues: run.issues.map((i) => ({ ...issueOut(i), evidence: i.evidence })),
-        strategies: run.strategies.map((s) => ({ id: s.id, type: s.type, title: s.title, issue: s.issue, kind: s.kind, chosen: (opts.chosen || []).includes(s.id) })),
+        // No chosen flags: the person may change the choice after the summary, so the Writer writes for any
+        // choice, as the recorded summaries do (review, new problem A).
+        strategies: run.strategies.map((s) => ({ id: s.id, type: s.type, title: s.title, issue: s.issue, kind: s.kind })),
         facts: opts.facts || Object.fromEntries(FACT_KEYS.map((k) => [k, ""]))
       };
     default:

@@ -9,7 +9,7 @@
 import { APP, QUADRANTS } from "./config.js";
 import { t } from "./i18n/index.js";
 import { figuresFor } from "./scenario.js";
-import { addressed } from "./simulation.js";
+import { addressed, challengedIds } from "./simulation.js";
 import { band, expected } from "./risk.js";
 import { renderFacts } from "./facts.js";
 import { factValues } from "./engine.js";
@@ -65,12 +65,6 @@ export function sourcesOf({ run, scenario, today }) {
   return out;
 }
 
-/** Item ids the Red team challenged among the entered and completed items, as the tile counts them. */
-function challengedIds(run) {
-  const named = new Set(run.issues.flatMap((i) => i.items || []));
-  return run.items.filter((i) => !i.added && named.has(i.id)).map((i) => i.id);
-}
-
 /** A strategy's range as a handoff range: likelihood, euros and the engine's expected value. */
 function range(r) {
   if (!r) return null;
@@ -82,7 +76,7 @@ function range(r) {
  * (strategy ids), lang, mode ("simulation" | "live"), model (the live run's model id, else null), created
  * (a Date), country (the company's country as entered) }. Returns the plain object, not yet checked.
  */
-export function handoffFor({ run, scenario = null, chosen = [], lang, mode, model = null, created = new Date(), country = null }) {
+export function handoffFor({ run, scenario = null, chosen = [], lang, mode, model = null, created = new Date(), country = null, unchecked = false }) {
   const set = new Set(chosen);
   const f = figuresFor(run, chosen);
   const facts = factValues(f, lang, zoneName);
@@ -115,9 +109,11 @@ export function handoffFor({ run, scenario = null, chosen = [], lang, mode, mode
       band: band(i.impact, i.likelihood),
       horizon: i.horizon,
       kpis: (a?.kpis || []).map((k) => ({ id: k.id, name: k.name, unit: k.unit, direction: k.direction, change_low: k.change_low, change_high: k.change_high, basis: k.basis })),
-      eur_year_low: priced ? a.eur_year_low : 0,
-      eur_year_high: priced ? a.eur_year_high : 0,
-      eur_year_expected: priced ? expected(a.eur_year_low, a.eur_year_high, i.likelihood) : 0,
+      // An issue the Analyst could not price states no euros (null, as the schema allows), so a reader that
+      // sums them counts it as unpriced, as the tile does ("on 5 of 6 issues"), not as priced at €0.
+      eur_year_low: priced ? a.eur_year_low : null,
+      eur_year_high: priced ? a.eur_year_high : null,
+      eur_year_expected: priced ? expected(a.eur_year_low, a.eur_year_high, i.likelihood) : null,
       eur_basis: priced ? a.basis : t("h.not.priced", { reason: a?.reason || t("h.not.priced.none", null, lang) }, lang),
       evidence: (i.evidence || []).map((e) => ({ url: e.url, title: e.title, read_on: readOn.get(e.url) || today })),
       confidence: i.confidence
@@ -141,8 +137,9 @@ export function handoffFor({ run, scenario = null, chosen = [], lang, mode, mode
   const challenged = challengedIds(run);
   const s = run.summary;
   const r = (text) => renderFacts(text, facts);
+  // A summary that failed the figure check twice says so first, as the page and the report do (finding 17).
   const summary = s
-    ? { headline: r(s.headline), text: [r(s.situation), s.findings.map((x) => `- ${r(x)}`).join("\n"), r(s.recommendation)].join("\n\n") }
+    ? { headline: r(s.headline), text: [unchecked ? t("h.summary.unchecked", null, lang) : null, r(s.situation), s.findings.map((x) => `- ${r(x)}`).join("\n"), r(s.recommendation)].filter((x) => x !== null).join("\n\n") }
     : { headline: t("h.summary.none", { company: run.company.name }, lang), text: "" };
   return {
     schema: HANDOFF_SCHEMA,
@@ -156,7 +153,7 @@ export function handoffFor({ run, scenario = null, chosen = [], lang, mode, mode
       sector: run.sector || run.company.sector || "general",
       country: countryCode(country ?? run.company.country),
       description: run.company.description || "",
-      fictional: mode !== "live"
+      fictional: mode !== "live" || !!run.company.fictional
     },
     framework: { type: "swot", areas },
     issues,

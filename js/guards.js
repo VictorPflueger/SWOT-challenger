@@ -161,6 +161,8 @@ export function strategiesProblems(answer, { items, issues, factors }) {
       const own = issueExpected(issue);
       const left = expected(residual.eur_year_low, residual.eur_year_high, residual.likelihood);
       if (own !== null && left > own + 1e-9) out.push(`Strategy ${s.id} leaves more at risk than issue ${s.issue} had.`);
+      // A residual risk above the original (brief 7) counts the band too: what is left is no more likely.
+      if (residual.likelihood > issue.likelihood) out.push(`Strategy ${s.id} leaves issue ${s.issue} more likely than it was (${residual.likelihood} against ${issue.likelihood}); what is left is at most as likely.`);
     }
     for (const r of s.ratings) {
       if (!s.items.includes(r.item)) out.push(`Strategy ${s.id} rates ${r.item}, which it does not pair.`);

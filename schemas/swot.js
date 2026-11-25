@@ -101,6 +101,12 @@ const Impact = object({
 const Factor = object({ item: ITEM_ID, weight: { type: "number", minimum: 0, maximum: 1 }, rating: RATING, reason: text(140) });
 const Assessment = object({ impacts: list({ $ref: "Impact.json" }, 8), factors: list({ $ref: "Factor.json" }, 40, 4) });
 
+/**
+ * What is left of an issue after a strategy, or what it could gain: a euro range a year and its likelihood,
+ * with what the Strategist rests them on and how sure it is, as every AI estimate (brief 5.10).
+ */
+const Range = object({ likelihood: SCALE5, eur_year_low: EUR, eur_year_high: EUR, basis: text(140), confidence: CONFIDENCE });
+
 /** One TOWS strategy of the Strategist: one issue, one internal and one external item at least. */
 const Strategy = object({
   id: STRATEGY_ID,
@@ -110,8 +116,8 @@ const Strategy = object({
   issue: ISSUE_ID,
   kind: { enum: ["mitigate", "advantage"] },
   ratings: list(object({ item: ITEM_ID, to: RATING }), 6),
-  residual: list(object({ likelihood: SCALE5, eur_year_low: EUR, eur_year_high: EUR }), 1),
-  upside: list(object({ likelihood: SCALE5, eur_year_low: EUR, eur_year_high: EUR }), 1),
+  residual: list(Range, 1),
+  upside: list(Range, 1),
   effort: { enum: ["S", "M", "L"] },
   time_to_impact: text(40),
   first_step: text(140),
@@ -183,7 +189,8 @@ const AuditEvent = object({
 
 /**
  * A live run saved as a simulation ("Save run as simulation"): the Scenario format in the run's one
- * language, a real company (not fictional), the sources its research accepted, the person's check of the
+ * language, a real company or a fictional one filled in for a demo (fictional says which), the sources its
+ * research accepted, the person's check of the
  * AI's items and the strategies chosen, and how the run went: settings, cost, time and each request's
  * usage. The builder curates it into a recorded scenario: a second language, a fictional company, checks.
  */
@@ -192,7 +199,7 @@ const Recording = object({
   source: { const: "live" },
   as_of: { type: "string", format: "date" },
   language: { enum: ["en", "de"] },
-  company: object({ name: text(80), sector: { type: "string", pattern: "^[a-z_]+$" }, country: { type: "string", maxLength: 60 }, description: oneLanguage(140, 0), fictional: { const: false } }),
+  company: object({ name: text(80), sector: { type: "string", pattern: "^[a-z_]+$" }, country: { type: "string", maxLength: 60 }, description: oneLanguage(140, 0), fictional: { type: "boolean" } }),
   sources: list(object({ url: { type: "string", pattern: "^https://" }, read_on: { type: "string", format: "date" } }), 40),
   entered: object({ strengths: list(oneItem, 8), weaknesses: list(oneItem, 8), opportunities: list(oneItem, 8), threats: list(oneItem, 8) }),
   answers: { anyOf: [object({ en: { type: "object" } }), object({ de: { type: "object" } })] },

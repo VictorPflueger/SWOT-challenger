@@ -6,7 +6,7 @@
 export const APP = Object.freeze({
   id: "swot",
   name: "SWOT Challenger",
-  version: "0.4.0",
+  version: "1.0.0",
   url: "https://victorpflueger.github.io/SWOT-challenger/"
 });
 
@@ -111,9 +111,11 @@ export const STEP_TOKENS = Object.freeze({
 /**
  * Research: five searches, at most three Scout requests (the first, a resend after pause_turn, one round
  * after refused URLs or a deferred search). A run sends at most ten requests: five agents, three for the
- * Scout and two repairs (PLAN.md, section 3.1).
+ * Scout and two repairs (PLAN.md, section 3.1). The pages a search returns come back as input tokens,
+ * billed like any other, and the API states no size for them (web search tool, read on 24 November 2026),
+ * so the budget's worst case allows 12,000 tokens a search: four times the 3,000 the estimate assumes.
  */
-export const RESEARCH = Object.freeze({ maxUses: 5, maxRequests: 3 });
+export const RESEARCH = Object.freeze({ maxUses: 5, maxRequests: 3, pageTokensPerSearch: 12000 });
 export const MAX_REQUESTS = 10;
 
 /** Above this many input tokens Haiku 5.5's prices rise fivefold, so budget.js refuses such a request. */

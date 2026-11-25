@@ -53,8 +53,8 @@ const VALID = {
   },
   Strategies: {
     strategies: [
-      { id: "R1", type: "ST", title: "Offer customers their data through an open portal", items: ["s1", "t1"], issue: "I1", kind: "mitigate", ratings: [{ item: "t1", to: 3 }], residual: [{ likelihood: 2, eur_year_low: 500000, eur_year_high: 1500000 }], upside: [], effort: "M", time_to_impact: "6 to 12 months", first_step: "Product management drafts the portal's scope", owner: "Product management", recommended: true },
-      { id: "R2", type: "SO", title: "Sell uptime with the drives", items: ["s1", "o1"], issue: "I1", kind: "advantage", ratings: [{ item: "o1", to: 3 }], residual: [], upside: [{ likelihood: 3, eur_year_low: 1000000, eur_year_high: 2000000 }], effort: "L", time_to_impact: "12 to 24 months", first_step: "Sales picks three pilot customers", owner: "Sales", recommended: false }
+      { id: "R1", type: "ST", title: "Offer customers their data through an open portal", items: ["s1", "t1"], issue: "I1", kind: "mitigate", ratings: [{ item: "t1", to: 3 }], residual: [{ likelihood: 2, eur_year_low: 500000, eur_year_high: 1500000, basis: "A portal keeps most customers with the company", confidence: "medium" }], upside: [], effort: "M", time_to_impact: "6 to 12 months", first_step: "Product management drafts the portal's scope", owner: "Product management", recommended: true },
+      { id: "R2", type: "SO", title: "Sell uptime with the drives", items: ["s1", "o1"], issue: "I1", kind: "advantage", ratings: [{ item: "o1", to: 3 }], residual: [], upside: [{ likelihood: 3, eur_year_low: 1000000, eur_year_high: 2000000, basis: "Customers pay for hours of running instead of parts", confidence: "low" }], effort: "L", time_to_impact: "12 to 24 months", first_step: "Sales picks three pilot customers", owner: "Sales", recommended: false }
     ]
   },
   Summary: { headline: "{{fact:at_stake}} a year at stake", situation: "The team's SWOT misses its customers' new data rights.", findings: ["One", "Two", "Three"], recommendation: "Open the data before rivals do.", assumptions: ["A", "B", "C"] },
@@ -102,10 +102,12 @@ const BROKEN = [
   ["Strategies", "seven strategies", (x) => { x.strategies = Array.from({ length: 7 }, (_, i) => ({ ...x.strategies[0], id: `R${i + 1}` })); }],
   ["Strategies", "a TOWS type that does not exist", (x) => { x.strategies[0].type = "SW"; }],
   ["Strategies", "a strategy with one item", (x) => { x.strategies[0].items = ["s1"]; }],
+  ["Strategies", "a range without what it rests on", (x) => { delete x.strategies[0].residual[0].basis; }],
+  ["Strategies", "a range whose confidence is a number", (x) => { x.strategies[0].residual[0].confidence = 0.7; }],
   ["Summary", "two findings instead of three", (x) => { x.findings = ["One", "Two"]; }],
   ["Decision", "a strategy id that is no id", (x) => { x.chosen = ["strategy one"]; }],
   ["Scenario", "a company not marked fictional", (x) => { x.company.fictional = false; }],
-  ["Recording", "a company marked fictional", (x) => { x.company.fictional = true; }],
+  ["Recording", "a company whose fictional mark is a word", (x) => { x.company.fictional = "no"; }],
   ["Recording", "texts in both languages", (x) => { x.entered.strengths[0].text = { en: "Quality", de: "Qualität" }; }],
   ["Recording", "a key field in its run", (x) => { x.run.key = "sk-ant-…"; }],
   ["RunEvent", "a step that does not exist", (x) => { x.step = "review"; }],

@@ -26,8 +26,12 @@ const check = (ok, what) => results.push([!!ok, what]);
 const CREATED = new Date("2026-11-24T09:30:00.000Z");
 
 let reader = null;
+let ideatorStake = null;
 const ideatorFile = path.join(IDEATOR, "js", "handoff.js");
-if (existsSync(ideatorFile)) reader = (await import(pathToFileURL(ideatorFile).href)).readHandoff;
+if (existsSync(ideatorFile)) {
+  reader = (await import(pathToFileURL(ideatorFile).href)).readHandoff;
+  ideatorStake = (await import(pathToFileURL(path.join(IDEATOR, "js", "engine.js")).href)).atStake;
+}
 else if (requireIdeator) check(false, `the Prototype Ideator's reader at ${ideatorFile} (set IDEATOR_DIR)`);
 else console.log(`SKIP  the Prototype Ideator's reader: no checkout at ${IDEATOR}`);
 
@@ -79,7 +83,7 @@ for (const scenario of [S1, S2, S3]) {
       check(json.responses.filter((r) => r.chosen).map((r) => r.id).sort().join() === [...chosen].sort().join(), `${name}: the chosen responses are the choice`);
       for (const i of json.issues) {
         const e = run.issues.find((x) => x.id === i.id).expected;
-        if (e === null) check(i.eur_year_expected === 0 && /^(Not priced|Nicht beziffert)/.test(i.eur_basis), `${name}: issue ${i.id} is not priced and says so`);
+        if (e === null) check(i.eur_year_low === null && i.eur_year_high === null && i.eur_year_expected === null && /^(Not priced|Nicht beziffert)/.test(i.eur_basis), `${name}: issue ${i.id} is not priced: no euros (null) and a basis that says so`);
         else check(near(i.eur_year_expected, e), `${name}: issue ${i.id}'s expected euros are the engine's`);
       }
       check(json.company.fictional === true && json.mode === "simulation" && json.model === null && json.language === lang, `${name}: a recorded run of a fictional company, in ${lang}`);
@@ -88,19 +92,31 @@ for (const scenario of [S1, S2, S3]) {
       if (reader) {
         const r = reader(json, { file: `${name}.json` });
         check(r.ok && r.issues.length === json.issues.length, `${name}: the Prototype Ideator reads it${r.ok ? `, ${r.issues.length} issues` : `: ${r.problems.slice(0, 2).join("; ")}`}`);
+        // The Ideator's own sum must say what the tile says: the same euros, on as many of the issues.
+        if (r.ok && ideatorStake) {
+          const s = ideatorStake(r.issues);
+          check(near(s.eur ?? 0, f.stake.value) && s.stated === f.stake.priced && s.of === f.stake.of, `${name}: the Ideator's at stake is the tile's: ${s.eur} on ${s.stated} of ${s.of} issues (tile: ${f.stake.value} on ${f.stake.priced} of ${f.stake.of})`);
+        }
       }
     }
   }
 }
 
 // ---- a live run's file ------------------------------------------------------------------------------
-const live = handoffFor({ run: assemble(S2, "de"), chosen: ["R1"], lang: "de", mode: "live", model: "claude-haiku-5-5", created: CREATED, country: "Deutschland" });
-files += 1;
-check(!handoffProblems(live).length, "a live run's file passes the shared schema and its references");
-check(live.mode === "live" && live.model === "claude-haiku-5-5" && live.company.fictional === false, "a live run's file names its model and says the company is not fictional");
+// A live run of a company the person named, and one of a fictional company filled in for a demo.
+const real = (run) => ({ ...run, company: { ...run.company, name: "Müller Antriebe", fictional: false } });
+const live = handoffFor({ run: real(assemble(S2, "de")), chosen: ["R1"], lang: "de", mode: "live", model: "claude-haiku-5-5", created: CREATED, country: "Deutschland" });
+const demo = handoffFor({ run: assemble(S2, "de"), chosen: ["R1"], lang: "de", mode: "live", model: "claude-haiku-5-5", created: CREATED, country: "Deutschland" });
+files += 2;
+check(!handoffProblems(live).length && !handoffProblems(demo).length, "a live run's file passes the shared schema and its references");
+check(live.mode === "live" && live.model === "claude-haiku-5-5" && live.company.fictional === false && demo.company.fictional === true, "a live run's file names its model; a company the person named is not fictional, a fictional company filled in for a demo stays fictional");
 check(live.company.country === "DE" && countryCode("Germany") === "DE" && countryCode("at") === "AT" && countryCode("Atlantis") === "ZZ", "a country as entered becomes its code, or ZZ when unknown");
 check(live.schema === HANDOFF_SCHEMA && live.tool.id === "swot-challenger" && /^https:\/\//.test(live.tool.url), "the file names its schema and the tool");
 if (reader) check(reader(live, { file: "live.json" }).ok, "the Prototype Ideator reads a live run's file");
+// A summary that failed the figure check twice says so first (review finding 17).
+const unchecked = handoffFor({ run: real(assemble(S2, "en")), chosen: ["R1"], lang: "en", mode: "live", model: "claude-haiku-5-5", created: CREATED, country: "Germany", unchecked: true });
+files += 1;
+check(!handoffProblems(unchecked).length && unchecked.summary.text.startsWith("Unchecked: this summary failed the figure check twice") && !live.summary.text.startsWith("Unchecked") && (!reader || reader(unchecked, { file: "unchecked.json" }).ok), "an unchecked summary says so first in the file, which still passes its checks");
 
 for (const [ok, what] of results) console.log(`${ok ? "PASS" : "FAIL"}  ${what}`);
 const failed = results.filter(([ok]) => !ok).length;

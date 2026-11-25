@@ -7,7 +7,7 @@
 import { t } from "./i18n/index.js";
 import { h, icon } from "./dom.js";
 import { money, score, weight as fmtWeight, zoneName } from "./format.js";
-import { band, riskScore, fixed } from "./risk.js";
+import { band, riskScore, fixed, PROBABILITY } from "./risk.js";
 import { CELLS, ZONE, SIDE } from "./engine.js";
 import { strategyEffect } from "./scenario.js";
 import { TOWS, strategiesByType } from "./simulation.js";
@@ -157,6 +157,40 @@ export function effectText(s, lang) {
 }
 
 /**
+ * What a strategy's figure rests on, in words: the Strategist's euro range a year and likelihood after the
+ * strategy (what is left, or the upside), and how code turns them into the figure. "" without a figure.
+ */
+export function effectBasis(s, lang, tr = t) {
+  const r = s.residual || s.upside;
+  if (!r) return "";
+  return tr(s.kind === "advantage" ? "s.strat.basis.upside" : "s.strat.basis.left", {
+    low: money(r.eur_year_low, lang), high: money(r.eur_year_high, lang), likelihood: r.likelihood,
+    p: Math.round(PROBABILITY[r.likelihood] * 100), eur: money(strategyEffect(s), lang)
+  });
+}
+
+/**
+ * A strategy's estimate as rows of a description list: how code turns the range into the figure, what the
+ * Strategist rests the range on, and how sure it is (brief 5.10). null without a figure.
+ */
+export function estimateRows(s, lang, tr = t, label = "p.estimate") {
+  const r = s.residual || s.upside;
+  if (!r) return null;
+  return [
+    h("dt", {}, tr(label)), h("dd", {}, effectBasis(s, lang, tr)),
+    r.basis ? [h("dt", {}, tr("rp.issue.basis")), h("dd", { class: "ai-text" }, r.basis)] : null,
+    r.confidence ? [h("dt", {}, tr("rp.issue.confidence")), h("dd", {}, tr(`p.conf.${r.confidence}`))] : null
+  ];
+}
+
+/** A strategy's figure as the AI's estimate: lilac, with the AI mark, and said as an estimate to a screen reader. */
+export function effectMark(s, lang, cls = "tows-effect") {
+  const text = effectText(s, lang);
+  if (!text) return null;
+  return h("span", { class: [cls, "ai-text"] }, icon("sparkle"), h("span", { class: "vc-visually-hidden" }, `${t("p.estimate")}: `), text);
+}
+
+/**
  * The TOWS matrix: strengths and weaknesses across, opportunities and threats down, each cell with its
  * strategies as cards to tick. opts: { run, lang, selection (a Set of ids), onToggle(id, on), open }.
  */
@@ -173,7 +207,8 @@ export function towsMatrix({ run, lang, selection, onToggle, open }) {
         h("dt", {}, t("s.strat.time.label")), h("dd", {}, s.time_to_impact),
         h("dt", {}, t("s.strat.effort.label")), h("dd", {}, t(`p.effort.${s.effort}`)),
         h("dt", {}, t("s.strat.pairs")), h("dd", {}, s.items.map((id) => text.get(id)).filter(Boolean).join("; ")),
-        h("dt", {}, t("s.strat.ratings.label")), h("dd", {}, s.changes.map((c) => t("s.strat.rating", { item: text.get(c.item) || c.item, from: c.from, to: c.to })).join("; ")));
+        h("dt", {}, t("s.strat.ratings.label")), h("dd", {}, s.changes.map((c) => t("s.strat.rating", { item: text.get(c.item) || c.item, from: c.from, to: c.to })).join("; ")),
+        estimateRows(s, lang));
     // The first step, the owner and the new ratings open under the card, from a small button beside its title.
     const info = h("button", { type: "button", class: "vc-icon-button vc-icon-button--sm tows-card__info", id: `info-${s.id}`, "aria-expanded": String(shown), "aria-controls": `more-${s.id}`, "aria-label": t("s.strat.more.label", { title: s.title }) }, icon(shown ? "chevron-up" : "chevron-down"));
     info.addEventListener("click", () => {
@@ -186,7 +221,7 @@ export function towsMatrix({ run, lang, selection, onToggle, open }) {
     return h("li", { class: "tows-card", dataset: { kind: s.kind, checked: selection.has(s.id) ? "true" : "false", strategy: s.id } },
       h("div", { class: "tows-card__top" }, h("label", { class: "vc-checkbox tows-card__choose" }, box, h("span", { class: "tows-card__title" }, s.title)), info),
       h("p", { class: "tows-card__meta" },
-        h("span", { class: "tows-effect" }, effectText(s, lang)),
+        effectMark(s, lang),
         s.recommended ? h("span", { class: "vc-tag vc-tag--sm vc-tag--feature tows-rec" }, icon("sparkle"), t("s.strat.recommended")) : null),
       more);
   };
@@ -199,7 +234,7 @@ export function towsMatrix({ run, lang, selection, onToggle, open }) {
     byType[type].length ? h("ul", { class: "tows-cards" }, byType[type].map(card)) : h("p", { class: "tows-empty" }, t("s.strat.empty")));
   const table = h("table", { class: "vc-table vc-table--compact" },
     h("caption", { class: "vc-visually-hidden" }, t("s.strat.matrix")),
-    h("thead", {}, h("tr", {}, th(t("p.th.strategy")), th(t("p.th.type")), th(t("p.th.kind")), th(t("p.th.effect"), { class: "vc-num" }), th(t("p.th.chosen")))),
+    h("thead", {}, h("tr", {}, th(t("p.th.strategy")), th(t("p.th.type")), th(t("p.th.kind")), th(t("p.th.effect.ai"), { class: "vc-num" }), th(t("p.th.chosen")))),
     h("tbody", {}, TOWS.flatMap((type) => byType[type]).map((s) => h("tr", {},
       h("th", { scope: "row" }, s.title), h("td", {}, s.type), h("td", {}, t(`p.kind.${s.kind}`)), num(effectText(s, lang)), h("td", {}, selection.has(s.id) ? t("p.yes") : t("p.no"))))));
   // The column with more strategies gets more room, up to three times the other's, so a crowded cell
@@ -209,7 +244,9 @@ export function towsMatrix({ run, lang, selection, onToggle, open }) {
   const w = many("WO", "WT");
   const ratio = (x, y) => `${Math.min(3, Math.max(1, x / y)).toFixed(2)}fr`;
   return h("div", { class: "tows-wrap" },
-    h("div", { class: "tows", role: "group", "aria-label": t("s.strat.matrix"), vars: { "--tows-s": ratio(s, w), "--tows-w": ratio(w, s) } },
+    // A row whose two cells hold no strategy drops its upright label, which would set the row's height on
+    // its own: each cell says "No strategy here", and the room goes to the row that holds the strategies.
+    h("div", { class: "tows", role: "group", "aria-label": t("s.strat.matrix"), dataset: { emptyO: String(!byType.SO.length && !byType.WO.length), emptyT: String(!byType.ST.length && !byType.WT.length) }, vars: { "--tows-s": ratio(s, w), "--tows-w": ratio(w, s) } },
       h("p", { class: "tows-head tows-head--col", dataset: { head: "s" }, "aria-hidden": "true" }, t("q.strengths")),
       h("p", { class: "tows-head tows-head--col", dataset: { head: "w" }, "aria-hidden": "true" }, t("q.weaknesses")),
       h("p", { class: "tows-head tows-head--row", dataset: { head: "o" }, "aria-hidden": "true" }, t("q.opportunities")),

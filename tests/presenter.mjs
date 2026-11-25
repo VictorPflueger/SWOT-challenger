@@ -21,7 +21,7 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { APP_ROOT, REQUIRE_VICI, viciDir, launchBrowser, serveStatic, NETWORK_NOISE } from "./lib/harness.mjs";
-import { createRun } from "../js/simulation.js";
+import { createRun, addressed } from "../js/simulation.js";
 import { figuresFor } from "../js/scenario.js";
 import { money, fixed } from "../js/risk.js";
 import { kpisFor } from "../data/kpis.js";
@@ -209,7 +209,7 @@ try {
       const before = stake.main === money(f.stake.value, lang) && stake.unit === (partial ? t(lang, "p.kpi.stake.on", { priced: f.stake.priced, of: f.stake.of }) : "") && stake.note === t(lang, "p.kpi.stake.note")
         && items.main === t(lang, "p.kpi.items.value", { n: f.items.challenged, total: f.items.total }) && items.note === tn(lang, "p.kpi.items.added", f.items.added)
         && efe.main === score(f.efe.before.value, lang) && efe.note === t(lang, "p.kpi.efe.note")
-        && /€/.test(cost.main) && cost.note === t(lang, "p.kpi.cost.note.sim", { model: "Haiku 5.5" })
+        && /€/.test(cost.main) && cost.note === t(lang, "p.kpi.cost.note.sim")
         && !stake.was && !efe.was;
       check("TILES", before, `${id} in ${lang === "en" ? "English" : "German"}: before it plays, the tiles show ${stake.main} ${stake.unit}, ${items.main}, ${efe.main} and ${cost.main}, each with what it rests on`);
       await open(page, `lang=${lang}&scenario=${id}&step=5`);
@@ -217,11 +217,15 @@ try {
       const s2 = await tile(page, "stake");
       const i2 = await tile(page, "items");
       const e2 = await tile(page, "efe");
-      const addressedCount = await page.evaluate(() => document.querySelectorAll('.vc-item[data-status="addressed"]').length);
+      // The note counts the challenged items the choice addresses, not every item it raises (finding 6).
+      const fixedIds = new Set(addressed(run, runs[id].recorded).keys());
+      const named = new Set(run.issues.flatMap((i) => i.items || []));
+      const addressedCount = run.items.filter((i) => !i.added && named.has(i.id) && fixedIds.has(i.id)).length;
+      const gridAddressed = await page.evaluate(() => document.querySelectorAll('.vc-item[data-status="addressed"]').length);
       const after = s2.was === money(f.stake.value, lang) && s2.main === money(g.left, lang)
         && (g.upside > 0 ? s2.note === t(lang, "p.kpi.stake.after.upside", { upside: money(g.upside, lang) }) : s2.note === t(lang, "p.kpi.stake.after"))
         && e2.was === score(f.efe.before.value, lang) && e2.main === score(g.efe.after.value, lang)
-        && i2.note === tn(lang, "p.kpi.items.addressed", addressedCount) && addressedCount > 0;
+        && i2.note === tn(lang, "p.kpi.items.addressed", addressedCount, { of: f.items.challenged }) && addressedCount > 0 && gridAddressed >= addressedCount;
       check("TILES", after, `${id} in ${lang === "en" ? "English" : "German"}: after the decision, ${s2.was} is struck through beside ${s2.main}, ${e2.was} beside ${e2.main}, and ${i2.note}`);
       await context.close();
     }

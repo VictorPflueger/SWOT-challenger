@@ -73,6 +73,19 @@ export function addressed(run, chosen) {
   return out;
 }
 
+/** Item ids the Red team challenged among the entered and completed items, as the tile counts them. */
+export function challengedIds(run) {
+  const named = new Set(run.issues.flatMap((i) => i.items || []));
+  return run.items.filter((i) => !i.added && named.has(i.id)).map((i) => i.id);
+}
+
+/**
+ * How many challenged items a choice addresses: the note under Items challenged after the decision. An
+ * item the choice raises but nobody challenged is addressed in the grid, but not counted here, so the note
+ * stays a part of the tile's figure (review finding 6), as the handoff's pressure has it.
+ */
+export const challengedAddressed = (run, fixed) => challengedIds(run).filter((id) => fixed.has(id)).length;
+
 /** The factor of an item: { weight, rating, reason }, or null. */
 export const factorOf = (run, itemId) => run.factors.find((f) => f.id === itemId) || null;
 

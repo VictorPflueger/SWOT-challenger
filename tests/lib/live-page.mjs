@@ -110,13 +110,23 @@ export async function until(page, statuses, timeout = 30000) {
   return state(page);
 }
 
+/**
+ * Fill in is done: the name is in the form and the focus is back on Fill in, the last thing it does, a frame
+ * later. Typing that follows goes where it is aimed; on a slow machine (CI) the late focus could otherwise
+ * move the caret away in the middle of a fill.
+ */
+export function filledIn(page, name = null) {
+  return page.waitForFunction((n) => { const v = document.getElementById("live-name")?.value; return (n ? v === n : !!v) && document.activeElement?.id === "live-fill-go"; }, name, { timeout: 10000 });
+}
+
 /** Run it live, fill in a fictional company, open the dialog. */
 export async function toDialog(page, { fill = "s2" } = {}) {
   await page.click("#btn-live");
   await page.waitForSelector("#live-fill");
   if (fill) {
     await page.selectOption("#live-fill", fill);
-    await page.waitForFunction((name) => document.getElementById("live-name")?.value === name, SCEN[fill].company.name);
+    await page.click("#live-fill-go");
+    await filledIn(page, SCEN[fill].company.name);
   }
   await page.click("#btn-cta");
   await page.waitForSelector("#live-dialog[open]");

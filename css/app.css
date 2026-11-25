@@ -150,16 +150,24 @@ html[lang="de"] .play.vc-button { min-width: 9.5rem; }
 .ai-text { color: var(--vc-feature-text); }
 /* The field's usual mistake closes the card at Start, whatever its height. */
 .quad-fault { margin: auto 0 0; padding-top: 8px; color: var(--vc-text-muted); font-size: var(--vc-font-size-sm); line-height: 1.4; text-wrap: pretty; border-top: 1px dashed var(--vc-border-subtle); }
-/* A tall screen shows each item whole; a short one its first line until it is opened (brief 6.1). */
-@media (min-height: 821px) {
+/* A large screen shows each item whole, and so does a narrow window, where the page scrolls. A screen of up
+   to 1600 px in width with more than 820 px of height, such as 1440 × 900, shows an item's first two lines,
+   and a shorter one, such as 1366 × 768 or 1280 × 720, its first line; each until it is opened (brief 6.1). */
+@media (min-height: 821px) and (min-width: 1601px), (max-width: 960px) {
   .swot.vc-framework--compact .vc-item:not([open]) .vc-item__text { display: block; -webkit-line-clamp: unset; overflow: visible; }
   /* Short lines read well a little tighter, and a field with six long items keeps room to spare. */
+  .swot .vc-item__text { line-height: 1.3; }
+}
+@media (min-height: 821px) and (min-width: 961px) and (max-width: 1600px) {
+  .swot.vc-framework--compact .vc-item:not([open]) .vc-item__text { -webkit-line-clamp: 2; }
   .swot .vc-item__text { line-height: 1.3; }
 }
 
 /* The step's story on the right, with the bar that holds its action at its foot. */
 .story { display: flex; flex-direction: column; min-height: 0; background: var(--vc-surface); }
-.story-scroll { flex: 1 1 auto; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: auto; padding: 14px 22px 0; }
+/* Positioned, so what Vici hides from sight but keeps for screen readers stays inside the panel and never
+   lengthens the page (review finding 15). */
+.story-scroll { position: relative; flex: 1 1 auto; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: auto; padding: 14px 22px 0; scroll-padding-bottom: calc(var(--bar-h, 0px) + 8px); }
 .story-title { margin: 0; font-size: var(--vc-font-size-xl); line-height: 1.2; text-wrap: balance; }
 .story-title:focus { outline: none; }
 .story-title:focus-visible { outline: 2px solid var(--vc-focus); outline-offset: 4px; border-radius: var(--vc-radius-sm); }
@@ -243,6 +251,8 @@ html[lang="de"] .play.vc-button { min-width: 9.5rem; }
 .issue__added { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: var(--vc-font-size-sm); font-weight: var(--vc-weight-semibold); }
 .issue__source { display: flex; align-items: center; gap: 6px; font-size: var(--vc-font-size-sm); }
 .issue__source .vc-icon { flex: none; color: var(--vc-text-muted); }
+/* The source's link stands alone on its line, so it is a target of its own: 24 px high (TECH_NOTES, 13). */
+.issue__source a { display: inline-flex; align-items: center; min-height: 24px; }
 .issue__money { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
 .issue__expected { font-family: var(--vc-font-display); font-size: var(--vc-font-size-lg); font-variant-numeric: tabular-nums; }
 .issue__range, .issue__basis { color: var(--vc-text-muted); font-size: var(--vc-font-size-sm); }
@@ -251,8 +261,6 @@ html[lang="de"] .play.vc-button { min-width: 9.5rem; }
 .vc-risk { max-width: 30rem; grid-template-columns: minmax(0, 1fr); }
 /* German headers run long: they break by syllable rather than push a table wider than its panel. */
 .story .vc-table, .method .vc-table { hyphens: auto; }
-.numbers > summary { width: fit-content; color: var(--vc-accent-text); font-size: var(--vc-font-size-sm); font-weight: var(--vc-weight-semibold); cursor: pointer; }
-.numbers[open] > summary { margin-bottom: 6px; }
 
 .assess { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
 .scores { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 8px; }
@@ -308,6 +316,7 @@ html[lang="de"] .play.vc-button { min-width: 9.5rem; }
 .tows-head { margin: 0; color: var(--vc-text-muted); font-size: var(--vc-font-size-xs); font-weight: var(--vc-weight-semibold); letter-spacing: var(--vc-tracking-caps); text-transform: uppercase; }
 .tows-head--col { align-self: end; }
 .tows-head--row { align-self: center; writing-mode: vertical-rl; transform: rotate(180deg); }
+.tows[data-empty-o="true"] .tows-head[data-head="o"], .tows[data-empty-t="true"] .tows-head[data-head="t"] { display: none; }
 .tows-cell { container: cell / inline-size; display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 8px 10px 10px; border: 1px solid var(--vc-border-subtle); border-radius: var(--vc-radius-md); background: var(--vc-bg-sunken); }
 /* A narrow cell keeps its code and kind on one line; the row and column labels name its two sides, and
    the full name stays for screen readers. */
@@ -324,11 +333,16 @@ html[lang="de"] .play.vc-button { min-width: 9.5rem; }
 .tows-card[data-checked="true"] { border-color: var(--vc-accent); box-shadow: inset 0 0 0 1px var(--vc-accent); }
 .tows-card > p { margin: 0; }
 .tows-card__top { display: flex; align-items: flex-start; gap: 4px; }
-.tows-card__choose.vc-checkbox { flex: 1 1 auto; font-size: var(--vc-font-size-sm); line-height: 1.35; }
+/* A title on one line still gives its box a target 24 px high (TECH_NOTES, 13). */
+.tows-card__choose.vc-checkbox { flex: 1 1 auto; min-height: 24px; font-size: var(--vc-font-size-sm); line-height: 1.35; }
 .tows-card__info.vc-icon-button { --_h: 1.75rem; flex: none; margin: -2px -4px 0 0; }
 .tows-card__title { font-weight: var(--vc-weight-semibold); }
 .tows-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; padding-inline-start: calc(1.125rem + 0.65rem); color: var(--vc-text-muted); font-size: var(--vc-font-size-xs); }
-.tows-effect { color: var(--vc-text); font-weight: var(--vc-weight-semibold); font-variant-numeric: tabular-nums; }
+/* A strategy's euro figure is the Strategist's estimate: lilac, with the AI mark (review finding 3). */
+.tows-effect, .chosen__figure { display: inline-flex; align-items: center; gap: 4px; font-weight: var(--vc-weight-semibold); font-variant-numeric: tabular-nums; }
+/* The mark at the size of the words beside it, so a card keeps its height (six cards fit above the bar at 1280 × 720). */
+.tows-effect { --vc-icon-size: 0.875rem; }
+.chosen__figure { --vc-icon-size: 1rem; }
 .tows-card__more { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; margin: 4px 0 0; padding-inline-start: calc(1.125rem + 0.65rem); font-size: var(--vc-font-size-xs); }
 .tows-card__more[hidden] { display: none; }
 .tows-card__more dt { color: var(--vc-text-muted); }
@@ -407,6 +421,8 @@ html[lang="de"] .play.vc-button { min-width: 9.5rem; }
 .mode-tag[data-mode="live"].vc-tag { --_bg: var(--vc-feature-bg); --_fg: var(--vc-feature-text); --_bd: var(--vc-feature-border); background: var(--vc-feature-bg); color: var(--vc-feature-text); border-color: var(--vc-feature-border); }
 .live-controls { display: flex; align-items: center; gap: 6px; margin-left: auto; flex: none; }
 .live-controls[hidden] { display: none; }
+/* A live run of a fictional company says so in the step bar, as the scenario picker's label does. */
+.live-fiction { color: var(--vc-text-muted); font-size: var(--vc-font-size-sm); font-weight: var(--vc-weight-medium); }
 .play[hidden], .scenario-pick[hidden], .live-open[hidden] { display: none; }
 .live-open.vc-button { flex: none; }
 
@@ -435,7 +451,10 @@ html[lang="de"] .play.vc-button { min-width: 9.5rem; }
 .live-field.is-invalid .vc-input { border-color: var(--vc-danger-border); }
 .live-error.vc-help { color: var(--vc-danger-text); font-weight: var(--vc-weight-semibold); }
 .live-fill { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding-top: 8px; border-top: 1px solid var(--vc-border-subtle); }
-.live-fill .vc-label { margin: 0; font-size: var(--vc-font-size-sm); }
+.live-fill .vc-label { flex-basis: 100%; margin: 0; font-size: var(--vc-font-size-sm); }
+/* The picker and Fill in share a line: choosing a company fills nothing until the button is pressed. */
+.live-fill .vc-select { flex: 1 1 12rem; width: auto; min-width: 0; }
+.live-fill .vc-button { flex: none; }
 .live-fill .vc-help { flex-basis: 100%; margin: 0; }
 
 /* The SWOT as a form: each item an input with its remove button, an "Add" field at the end. */
@@ -472,6 +491,10 @@ html[lang="de"] .play.vc-button { min-width: 9.5rem; }
 .check__edited { color: var(--vc-feature-text); font-size: var(--vc-font-size-xs); font-weight: var(--vc-weight-semibold); margin-right: auto; }
 .check__removed.vc-tag { gap: 4px; }
 .check-count { margin: 0 0 6px; color: var(--vc-text-muted); font-size: var(--vc-font-size-sm); }
+/* Where the person can type at the check, the public-information rule; under an edit that looks private, a warning. */
+.check-public, .check-warn { display: flex; align-items: baseline; gap: 6px; margin: 0 0 6px; color: var(--vc-warning-text); font-size: var(--vc-font-size-sm); }
+.check-warn { margin: 2px 0 0; }
+.check-public .vc-icon, .check-warn .vc-icon { flex: none; align-self: center; }
 .ai-item.is-removed { background: var(--vc-surface); border-color: var(--vc-border-subtle); border-style: dashed; }
 .ai-item.is-removed .ai-item__text, .ai-item.is-removed .ai-item__basis, .ai-item.is-removed .ai-item__conf { color: var(--vc-text-muted); }
 .ai-item__edited { color: var(--vc-feature-text); font-size: var(--vc-font-size-xs); }
@@ -504,8 +527,9 @@ html[lang="de"] .play.vc-button { min-width: 9.5rem; }
 
 /* ---------------------------------------------------------------- larger and smaller windows */
 
-/* Laptop screens shared at 1280 × 720 or 1366 × 768: everything stays in view. */
-@media (max-height: 820px) and (min-width: 961px) {
+/* Laptop screens, shared at 1280 × 720, 1366 × 768 or 1440 × 900: everything stays in view. Up to 1600 px
+   wide the laptop layout holds to 960 px of height, since the large one runs out of room at 1440 × 900. */
+@media (max-height: 820px) and (min-width: 961px), (max-height: 960px) and (min-width: 961px) and (max-width: 1600px) {
   :root { --fs-kpi: var(--vc-font-size-xl); }
   .kpi-value.vc-stat__value { font-size: calc(var(--vc-font-size-xl) * 1.1); }
   .swot .vc-item { font-size: var(--vc-font-size-xs); }
@@ -526,7 +550,8 @@ html[lang="de"] .play.vc-button { min-width: 9.5rem; }
   .intro { padding-block: 2px; }
   .brand-name { font-size: var(--vc-font-size-xl); }
   .stepbar { padding-block: 3px; }
-  .stepbar .vc-button, .scenario-pick .vc-select { --_h: 38px; }
+  /* Run it live is a primary action, so the bar's buttons keep 40 px (TECH_NOTES, 13). */
+  .stepbar .vc-button, .scenario-pick .vc-select { --_h: 40px; }
   .steps .vc-step__button { min-height: 38px; }
   .stage { gap: 6px; padding: 8px 14px 10px; }
   .stage-title { font-size: var(--vc-font-size-md); }

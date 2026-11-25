@@ -13,7 +13,7 @@
 
 import { getLang, setLang, onLang, t } from "./i18n/index.js";
 import { SCENARIOS } from "../data/scenarios/index.js";
-import { STEP, LAST_STEP, scenarioIdFrom, loadScenario, createRun, addressed, sameChoice } from "./simulation.js";
+import { STEP, LAST_STEP, scenarioIdFrom, loadScenario, createRun, addressed, challengedAddressed, sameChoice } from "./simulation.js";
 import { figuresFor, factsFor } from "./scenario.js";
 import { createTiles, tileTexts } from "./tiles.js";
 import { createReportView } from "./report_view.js";
@@ -23,7 +23,7 @@ import { estimateRun } from "./estimate.js";
 import { renderMethod } from "./method.js";
 import { h, fill, wordCount } from "./dom.js";
 import { money, score, zoneName, sessionCost } from "./format.js";
-import { APP } from "./config.js";
+import { APP, PRESETS } from "./config.js";
 import { createLive } from "./live.js";
 import { itemsChallenged } from "./engine.js";
 
@@ -45,6 +45,9 @@ export async function start() {
     picker: $("scenario"), announce: $("announce"), method: $("method"), updates: $("updates"),
     modeTag: $("mode-tag"), modeText: $("mode-text"), modeTip: $("tip-mode"), liveControls: $("live-controls"), pick: document.querySelector(".scenario-pick"), liveOpen: $("btn-live-bar")
   };
+  // The bar under the story sticks to the column's foot and would hide what the focus moves to behind it
+  // (WCAG 2.2, 2.4.11): the column's scroll padding follows the bar's height, so focus stops above it.
+  if (typeof ResizeObserver === "function") new ResizeObserver(() => els.scroll.style.setProperty("--bar-h", `${els.bar.offsetHeight}px`)).observe(els.bar);
   const tiles = createTiles(document);
   const reportView = createReportView({ dialog: $("report-dialog"), tools: $("report-tools"), body: $("report-body"), announce: (text) => announce(text), onSaved: () => live.markSaved() });
 
@@ -209,6 +212,8 @@ export async function start() {
     const checking = liveNow && liveNow.stepState(STEP.complete) === "check";
     const view = { run, step: state.step, lang, addressed: fixed, open: state.open, lit, live: liveNow, liveRun: !!liveNow, check: checking ? liveNow.check : null, onToggle: (id, isOpen) => (isOpen ? state.open.add(id) : state.open.delete(id)) };
     els.swotTitle.textContent = run.company.name ? t("p.swot.title", { company: run.company.name }) : t("s.live.title");
+    // A live run of a fictional company, filled in for a demo, says so on every step, as a scenario does.
+    $("live-fiction").hidden = !(liveNow && run.company.fictional);
     fill(els.grid, gridNodes(view));
     fill(els.legend, legendNodes(view));
 
@@ -218,8 +223,8 @@ export async function start() {
     const figures = scored ? { before: figuresFor(run, []), after: figuresFor(run, state.adopted || []) } : null;
     const snap = liveNow?.snap;
     const tileModel = liveNow
-      ? { lang, live: { figures, issues: run.issues.length > 0 || (snap && ["assess", "strategise", "summary"].includes(snap.step)), items: itemsOf(run), spentEur: snap?.spentEur ?? 0, capEur: snap?.capEur ?? null, model: snap?.settings.model ?? null, decided: !!state.adopted && scored, addressedCount: fixed.size, done: snap?.status === "done" } }
-      : { lang, loading: false, figures: { before: figures.before, after: figures.after }, decided: !!state.adopted, addressedCount: fixed.size, estimate: estimate() };
+      ? { lang, live: { figures, issues: run.issues.length > 0 || (snap && ["assess", "strategise", "summary"].includes(snap.step)), items: itemsOf(run), spentEur: snap?.spentEur ?? 0, capEur: snap?.capEur ?? null, model: snap?.settings.model ?? null, decided: !!state.adopted && scored, addressedCount: challengedAddressed(run, fixed), done: snap?.status === "done" } }
+      : { lang, loading: false, figures: { before: figures.before, after: figures.after }, decided: !!state.adopted, addressedCount: challengedAddressed(run, fixed), estimate: estimate() };
     // The report exists from the Summary step on, and for a live run that stopped: what is done.
     const reportLang = liveNow ? (liveNow.run?.rec.language || lang) : lang;
     const report = state.step === STEP.summary || (liveNow && snap?.stop)
@@ -561,7 +566,8 @@ async function fillGuideFigures() {
       "efe.before": score(before.efe.before.value, lang),
       "efe.after": score(after.efe.after.value, lang),
       left: facts.left,
-      cost: sessionCost(estimateRun(run.scenario, lang).eur, lang)
+      cost: sessionCost(estimateRun(run.scenario, lang).eur, lang),
+      "cost.thorough": sessionCost(estimateRun(run.scenario, lang, { modelId: PRESETS.find((p) => p.id === "thorough").model }).eur, lang)
     };
     for (const span of guide.querySelectorAll("[data-fig]")) {
       const v = values[span.dataset.fig];

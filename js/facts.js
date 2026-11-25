@@ -24,6 +24,10 @@ export const FACT_RE = /\{\{fact:([A-Za-z0-9_.-]+)\}\}/g;
 
 /** The fact keys of brief 6.5, without the issue keys, which depend on the run's issues. */
 export const FACT_KEYS = Object.freeze(["at_stake", "left", "upside", "ife.before", "ife.after", "efe.before", "efe.after", "zone.before", "zone.after", "items.challenged", "items.total", "items.added", "issues.count"]);
+/** The facts that follow the person's choice of strategies, which can change after the summary is written. */
+export const CHOICE_FACTS = Object.freeze(["left", "upside", "ife.after", "efe.after", "zone.after"]);
+/** What the Writer sees for a fact that follows the choice in place of its value, so it cites it and never restates it. */
+export const FOLLOWS_CHOICE = "follows the choice";
 
 /** The kind of a fact key, which decides how it renders: money, score, zone or count. */
 export function factKind(key) {

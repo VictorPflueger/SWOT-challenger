@@ -1,6 +1,6 @@
 # Technical notes
 
-Version 0.4.0 (M4 Report), 24 November 2026. These notes record what was checked at source, with the date, and the decisions the code rests on. PLAN.md is the plan Victor approved on 23 November 2026, with the eleven cuts of its design review. Where the code says "brief 6.4", it means section 6.4 of Victor's build brief, which is not part of this repository.
+Version 1.0.0 (M5 Release), 24 November 2026. These notes record what was checked at source, with the date, and the decisions the code rests on. PLAN.md is the plan Victor approved on 23 November 2026, with the eleven cuts of its design review. Where the code says "brief 6.4", it means section 6.4 of Victor's build brief, which is not part of this repository.
 
 ## 1. Models and prices
 
@@ -94,7 +94,7 @@ Version 0.2.0 plays three recorded runs. `data/scenarios/s1.js` to `data/scenari
 ### 10.1 Decisions
 
 - A "missing" issue names no item of the SWOT; the factor the challenge adds carries it. The checker refuses a missing issue that names items, so no item shows as missing and as something else at once.
-- An item counts as addressed when a chosen strategy raises its rating. The grid shows this from Summary on, once the choice is adopted.
+- An item counts as addressed when a chosen strategy raises its rating. The grid shows this from Summary on, once the choice is adopted. The note under Items challenged counts only the challenged items a choice addresses, as the handoff's `pressure` does, so it stays a part of the tile's figure: S2's recorded choice raises four items, two of them challenged, and the note says "2 of 6 addressed now" (until 1.0.0 it said "4 addressed now"; review finding 6). Naming the 6 ties the note to the tile's figure, since the grid marks all four items Addressed.
 - A strategy's kind follows its TOWS type: SO and WO turn an issue into an advantage, ST and WT mitigate it. The TOWS matrix names the kind once per cell, not on every card.
 - The Writer writes one summary that holds for any choice. It cites what the choice changes through `{{fact:key}}` placeholders, which code fills in for the strategies the person adopted, and the fact audit refuses every other figure (`tests/audit.mjs`).
 - The key figures follow the adopted choice: the tiles strike the old value through beside the new one. Changing the choice after Adopt asks for Adopt again before Summary opens.
@@ -183,7 +183,7 @@ The Completer's items keep their ids when the person removes or edits one; the c
 
 ### 11.10 Save run as simulation
 
-The run is a recording in the scenario format, in its one language: the Recording contract in `schemas/swot.js`, with the company not marked fictional, the sources research accepted, the person's decision and the run's settings, cost, seconds and each request's usage, without key or thinking. The scenario rules check a recording in its language under the rules a live run obeys; the rules of an authored scenario that a live run cannot meet wait for its curation: the second language, the sources in DATA_SOURCES.md, weights that add up to exactly 1 and prose without figures outside the Writer's text.
+The run is a recording in the scenario format, in its one language: the Recording contract in `schemas/swot.js`, with the company marked fictional only when it is one of the scenarios' companies filled in for a demo (since 1.0.0; review finding 2), the sources research accepted, the person's decision and the run's settings, cost, seconds and each request's usage, without key or thinking. The scenario rules check a recording in its language under the rules a live run obeys; the rules of an authored scenario that a live run cannot meet wait for its curation: the second language, the sources in DATA_SOURCES.md, weights that add up to exactly 1 and prose without figures outside the Writer's text.
 
 ### 11.11 Where 0.3.0 differs from PLAN.md
 
@@ -209,7 +209,7 @@ The report uses Vici's report pattern (https://victorpflueger.github.io/ViciDesi
 
 ### 12.2 Firefox and Safari
 
-Without margin boxes, Vici's fixed footer prints at the foot of every page: "Created with SWOT Challenger" with the address and "Built by Victor Pflüger", without page numbers, and the print hint adds that the browser's own headers and footers give them. Pending: G15 of the M4 ledger. Victor prints one report in Firefox and one in Safari, and the result goes here with the date and the browser versions.
+Without margin boxes, Vici's fixed footer prints at the foot of every page: "Created with SWOT Challenger" with the address and "Built by Victor Pflüger", without page numbers, and the print hint adds that the browser's own headers and footers give them. On 24 November 2026, after 0.4.0 went live, Victor printed a report in Firefox and in Safari and found the footer as described; he did not note the browser versions.
 
 ### 12.3 The HTML file
 
@@ -217,7 +217,7 @@ Without margin boxes, Vici's fixed footer prints at the foot of every page: "Cre
 
 ### 12.4 The handoff file
 
-The file for the Prototype Ideator is `strategy-challenge/1` (brief 4.3), checked against the shared schema and its references before the page offers it, and read in the tests by the Ideator's own `js/handoff.js` at its commit `532e0f5`, which CI checks out for the handoff and report suites. The SWOT's quadrants are its areas; each strategy is a response pointing at its issue, its new ratings `rate` changes; the score is the response to the market (EFE, 1 to 4). `pressure` is "Items challenged": before, the challenged items; after, those the chosen strategies leave unaddressed; of all items entered and completed. An issue the Analyst could not price carries 0, 0 and 0 with "Not priced:" and the reason as its basis. A live run's country, entered as words, becomes its two-letter code through the region names in both languages, or ZZ when unknown. A source an issue cites keeps the title the issue gives it, in the report's list of sources and in the file. The file holds no key, prompt or thinking.
+The file for the Prototype Ideator is `strategy-challenge/1` (brief 4.3), checked against the shared schema and its references before the page offers it, and read in the tests by the Ideator's own `js/handoff.js` at its commit `532e0f5`, which CI checks out for the handoff and report suites. The SWOT's quadrants are its areas; each strategy is a response pointing at its issue, its new ratings `rate` changes; the score is the response to the market (EFE, 1 to 4). `pressure` is "Items challenged": before, the challenged items; after, those the chosen strategies leave unaddressed; of all items entered and completed. An issue the Analyst could not price carries null for its three euro figures, as the schema allows, with "Not priced:" and the reason as its basis, so the Ideator counts it as unpriced, as the tile does ("on 5 of 6 issues"). Until 1.0.0 it carried 0, and the Ideator counted it as priced at €0 (review finding 5). A live run's country, entered as words, becomes its two-letter code through the region names in both languages, or ZZ when unknown. A source an issue cites keeps the title the issue gives it, in the report's list of sources and in the file. The file holds no key, prompt or thinking.
 
 ### 12.5 Where 0.4.0 differs from PLAN.md
 
@@ -232,3 +232,51 @@ The file for the Prototype Ideator is `strategy-challenge/1` (brief 4.3), checke
 - The leave-page warning (section 9) stands down once the report is downloaded or printed, as after Save run as simulation.
 - The live suites share the live run's helpers in `tests/lib/live-page.mjs`.
 
+
+## 13. The release (1.0.0)
+
+Version 1.0.0 closes M5, the plan's last milestone: the layout, keyboard and motion tests, the documents, three reviews and the release. The prices were read again on 24 November 2026 at https://platform.claude.com/docs/en/about-claude/pricing and are unchanged from section 1, the higher Haiku 5.5 tier above 100,000 tokens and web search at $10 per 1,000 searches included.
+
+### 13.1 Sizes and targets
+
+`tests/layout.mjs` measures four sizes now, 1920 × 1080, 1440 × 900, 1366 × 768 and 1280 × 720, in both themes and languages: every step of every scenario, the guide as it opens on a first visit, the Method dialog, the report and the live screens.
+
+- **Targets.** AC-14 asks 40 px of every target. On 24 November 2026 Victor decided otherwise: every target at least 24 px, as WCAG 2.2 (2.5.8) and the Sovereignty Assessment ask, and the primary actions at least 40 px, namely the Your turn bar's button, Run it live and Start the live run. A link inside a sentence is exempt, as WCAG allows, and a checkbox's target is its label. A planted 20 px button and a primary action 36 px high must fail first.
+- **What that changed.** On laptop screens the step bar's buttons, Run it live among them, keep 40 px (they had 38). "Show the numbers" was Vici's 21 px summary; Vici's pull request 47 (from the PESTEL Challenger) now makes it a 40 px target that gives the space back, as it does for a segmented option, a switch and a slider, so this tool's own 2 px padding is gone. The link of a source line, "Turn this report into prototype ideas" and a strategy's box with a one-line title are 24 px high.
+- **Six strategies in one cell.** The worst case for the decision at 1280 × 720 passed here with 20 px to spare but failed in CI, whose Chromium wraps the cards' lines a little sooner: the second row of cards ended 19 px under the bar. The empty row above it was as tall as its upright label, OPPORTUNITIES, alone. A row whose two cells hold no strategy now drops that label (each cell says "No strategy here"), which gives the cards about 50 px more; the suite's message for a card under the bar now gives the card's, its title's and its line's heights.
+- **1440 × 900.** Whole items ran longer than their fields, and at the decision a figure and the value it replaced broke onto two lines, so the header grew. Up to 1600 px wide and 960 px high the page now takes the laptop layout, and above 820 px of height an item shows its first two lines rather than one.
+- **1366 × 768.** Vici's live-run dialog scrolled by 63 to 79 px at its first opening, because its short-window rule stopped at 760 px of height. This tool fixed it in Vici (pull request 41, merged on 24 November 2026): the rule holds up to 880 px, and Vici's fit check (https://github.com/VictorPflueger/ViciDesign/blob/main/scripts/check-live-fit.mjs) opens the dialog at every height from 720 to 1080 px.
+- `vici/` holds Vici's main at `20e47d7`, which also carries the PESTEL Challenger's pull requests 42 (section 13.2), 44 and 47 (every target of Vici's own at least 40 px, section 13.1), the Prototype Ideator's 45, the BMC Challenger's 48 and 49 (the live-run dialog's acknowledgement at 40 px; a compact area of a framework view, which this tool does not use) and this tool's 46 (section 13.5).
+
+### 13.2 Keyboard and reduced motion
+
+PLAN.md, section 8, puts the keyboard and reduced motion into `tests/layout.mjs`. They are `tests/access.mjs` instead: the layout suite measures 432 views already, and walking the page by keyboard is a different test.
+
+- **Keyboard.** The keyboard alone runs the simulation from the guide on a first visit to Save as PDF, and a live run against the stand-in from Run it live to the Summary, in both languages. Every stop must show Vici's focus ring: its outline, a shadow in the focus colour, or the hexagon Vici draws around an icon button or a switch. Chromium does not report a slider thumb's style, so the walk compares the thumb's pixels with and without the focus. With the rings taken out of the page's styles (`tests/fixtures/no-focus-ring.css`) every stop fails.
+- **The company picker.** On the Start form, choosing a fictional company used to fill the form at once and move the focus to the company's name. A keyboard or screen-reader user moving through the list with the arrow keys filled the form at each step and lost the focus, which WCAG 2.2 (3.2.2, On input) rules out, and the form's own entries were overwritten without a word. Now choosing changes nothing: Fill in, beside the picker, fills the form, says so in words and to screen readers, and keeps the focus; its hint says that it replaces what the form holds.
+- **Reduced motion.** AC-14 asks that reduced motion stop animation. Vici keeps its spinner turning, slowly (2.4 s a turn), as the only cue that work goes on, and on design Vici wins, so the live run's wait keeps it; everything else lasts no longer than an instant. A dialog's backdrop still faded in over 210 ms, because Vici's rule reached every element and its `::before` and `::after` but not `::backdrop`. The PESTEL Challenger fixed that in Vici (pull request 42, merged on 24 November 2026) minutes before this tool's own fix, which was closed in its favour (pull request 43).
+
+### 13.3 The build stays lean
+
+`tests/lean.mjs`, adapted from the Sovereignty Assessment and the BMC Challenger, holds the limits a change has to argue with: the presenter in at most ten modules and 2,200 lines (2,104 at the release), `js/` in 6,500 lines (6,391) and two stylesheets in 900 (852); requests only from `js/anthropic.js`; no host named but the API and the links a person follows; the policy; nothing the design review cut; and the documents' length.
+
+### 13.4 Where 1.0.0 differs from PLAN.md
+
+- AC-15 asks Victor to run each preset live within its cap before the release. On 24 November 2026 he waived that for 1.0.0, as he had for M3 (section 11): the stand-in suites cover the live run, and his own runs can follow. Until one is measured, the estimate keeps the assumptions of section 11.3.
+- The plan adds the tool's card to Victor's website with a pull request on VIP's list of prototypes (https://github.com/VictorPflueger/VIP/blob/main/data/prototypes.js). This session may not push to VIP, so the change waits as a patch for Victor; the card's note says the release instead of "Work in progress".
+- The independent review, the design review and Vici's partner review are in REVIEW.md, with what each found and what was done about it.
+
+### 13.5 What the independent review changed
+
+An agent that did not build the tool reviewed the release candidate on 24 November 2026 and found 4 high, 6 medium and 8 low findings; verifying the fixes twice, it found six more of low severity (REVIEW.md, Independent review). What they changed:
+
+- **Research and the cap.** Search results come back as input tokens, so a run with research could pass its cap. The worst case of every request now adds 20 % to its own input (`INPUT_MARGIN`) and 12,000 tokens for each search it may run (`RESEARCH.pageTokensPerSearch`); the Haiku check against 100,000 tokens counts them too. The Scout asks for as many searches as fit, at most five, and skips research when none fits, with a note at Challenge. `tests/live.mjs` (ac09) runs research at €0.15 on Thorough and at €0.05 on Balanced. The 12,000 tokens are an allowance, not a measurement: the reviewer showed that at 15,000 tokens a search a run on Thorough can pass its cap by half a cent, and at 20,000 by five cents. So the research help and README say that each search counts as 12,000 tokens, and the first live research runs should measure the Scout's input and set the allowance from it.
+- **Fiction in a live run.** A scenario's company filled in for a demo stays fictional: the step bar, the report's cover and About this report, the handoff file and the saved run say so. The Recording contract takes `fictional` as true or false.
+- **AI estimates.** A strategy's euro figure is the Strategist's estimate: lilac with the AI mark on the cards, in the Summary and the table ("A year, AI estimate"). Each residual and upside now carries a basis of at most 140 characters and a confidence, as brief 5.10 asks of every AI estimate in a structured field; two required fields, so the request schemas keep no optional and no union-typed parameter. The details, the Summary and the report show the range, the likelihood, how code turns them into the figure, the basis and the confidence. The handoff file's range has no field for them in the shared schema, so they stay on the page and in the report.
+- **The check.** Where the person edits the AI's items, the panel says "Public information only"; an edit that looks private gets a warning under the item, and the last item inside or outside the company stays, with a sentence, since the factor tables need one on each side.
+- **Figures that agree.** An issue the Analyst could not price reaches the handoff file without euros (null), so the Ideator's At stake reads "on 5 of 6 issues" as the tile does; the note under Items challenged counts the challenged items a choice addresses; a residual is never more likely than its issue.
+- **The Writer and the choice.** A new choice after the summary takes effect without another request, so the Writer's text must hold for any choice, as the recorded summaries do: it sees the strategies without the choice, and the five facts that follow the choice (left, upside, every "after" key; `CHOICE_FACTS` in `js/facts.js`) reach it as "follows the choice", so it cites them as placeholders and cannot restate them.
+- **Smaller things.** A key typed into the form is in the warning and redacted in every download; an unchecked summary says so first in the handoff file; Clear everything during a request leaves no error; the story column holds what Vici hides for screen readers, so the page never grows past the window; the Session cost tile keeps the cap in its note after a live run and reads "estimated, simulated run" in a simulation, as brief 5.5 words it, and the guide adds the Thorough figure; the scenarios say Bremen and heat, as the brief does.
+- **Vici.** A report printed from the dark theme with background graphics sat in a black frame, since the page's margins take the canvas colour of the root's scheme. This tool fixed it in Vici (pull request 46, merged on 24 November 2026): in print the page takes the light scheme. `tests/report.mjs` checks it here too.
+- **CI and the page's late focus.** After Fill in, and after an item is added, the page gives the focus back a frame later. On CI's slower machines a test that typed at once could have its text land in the field the focus moved to: the line about the company stayed empty, or an IBAN landed in Strengths. The suites now wait for that focus first (`filledIn()` in `tests/lib/live-page.mjs`); a person types far slower than a frame. The live keyboard walk and the private-data warning also say what they saw when they fail.
+- **Focus behind the bar.** While checking the fixes, the keyboard suite learned to fail a focus that lands behind the bar at the story's foot (WCAG 2.2, 2.4.11). Without the fix below it finds 16 such stops in the four walks, among them Show the numbers, the issue buttons, the company picker and the check's Edit and Remove. The story column's scroll padding now follows the bar's height, set by a `ResizeObserver`.

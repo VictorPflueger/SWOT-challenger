@@ -75,7 +75,7 @@ export function tileTexts(model) {
   const items = before.items;
   out.items = {
     main: t("p.kpi.items.value", { n: items.challenged, total: items.total }, lang),
-    note: decided ? tn("p.kpi.items.addressed", model.addressedCount, {}, lang) : tn("p.kpi.items.added", items.added, {}, lang)
+    note: decided ? tn("p.kpi.items.addressed", model.addressedCount, { of: items.challenged }, lang) : tn("p.kpi.items.added", items.added, {}, lang)
   };
   const efeBefore = score(before.efe.before.value, lang);
   out.efe = { main: decided ? score(after.efe.after.value, lang) : efeBefore, was: decided ? efeBefore : "", note: t("p.kpi.efe.note", null, lang) };
@@ -113,11 +113,11 @@ function liveTexts(model) {
     out.efe = wait("p.kpi.wait.analyst", null, lang);
   }
   out.items = L.issues
-    ? { main: t("p.kpi.items.value", { n: L.items.challenged, total: L.items.total }, lang), note: L.decided ? tn("p.kpi.items.addressed", L.addressedCount, {}, lang) : tn("p.kpi.items.added", L.items.added, {}, lang) }
+    ? { main: t("p.kpi.items.value", { n: L.items.challenged, total: L.items.total }, lang), note: L.decided ? tn("p.kpi.items.addressed", L.addressedCount, { of: L.items.challenged }, lang) : tn("p.kpi.items.added", L.items.added, {}, lang) }
     : wait("p.kpi.wait.red", null, lang);
   const label = MODELS.find((m) => m.id === L.model)?.label || "";
   out.cost = L.capEur === null
     ? { main: euros(0, lang, 2), note: t("p.kpi.cost.before", null, lang) }
-    : { main: euros(L.spentEur, lang), note: L.done ? t("p.kpi.cost.live.done", { model: label }, lang) : t("p.kpi.cost.live", { cap: euros(L.capEur, lang, 2) }, lang) };
+    : { main: euros(L.spentEur, lang), note: L.done ? t("p.kpi.cost.live.done", { model: label, cap: euros(L.capEur, lang, 2) }, lang) : t("p.kpi.cost.live", { cap: euros(L.capEur, lang, 2) }, lang) };
   return out;
 }

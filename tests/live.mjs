@@ -35,7 +35,7 @@ import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { APP_ROOT, ONLY, launchBrowser, serveStatic, MOCK_KEY, viciDir, REQUIRE_VICI } from "./lib/harness.mjs";
 import { json, thinking, tool, search, MODELS_LIST, toolResults } from "./lib/fake-claude.mjs";
-import { SCEN, HAIKU, answers, scripted, openLivePage, closeLivePage, state, until, toDialog, startRun, wholeRun, text } from "./lib/live-page.mjs";
+import { SCEN, HAIKU, answers, scripted, openLivePage, closeLivePage, state, until, toDialog, startRun, wholeRun, text, filledIn } from "./lib/live-page.mjs";
 import { MODELS, FX_USD_EUR, BUDGET } from "../js/config.js";
 import { usageCostUsd } from "../js/cost.js";
 import { scenarioProblems } from "../js/scenario_check.js";
@@ -157,6 +157,27 @@ async function ac09() {
     check(spent <= BUDGET.minEur, `what was spent (€${spent.toFixed(4)}) stays within the cap`);
     await closePage(p, "cap");
   }
+  // Research at a tight cap, on Thorough and on Balanced: search results come back as input, so the Scout
+  // searches only as often as its worst case fits, pages included. Here each search brings 12,000 tokens
+  // back; with €0.15 on Sonnet 5.5, or the lowest cap of €0.05 on Haiku 5.5, where the $0.01 a search
+  // counts most, the Scout may search a few times but not five, and the run stays within the cap.
+  for (const [preset, cap] of [["thorough", 0.15], ["balanced", BUDGET.minEur]]) {
+    const usage = { input_tokens: 3000, output_tokens: 2500 };
+    const usesOf = (req) => req.tools?.find((t) => t.name === "web_search")?.max_uses ?? 0;
+    // The Scout is billed for its own request, counted as the budget counts it, and 12,000 tokens a search.
+    const own = (req) => Math.ceil((JSON.stringify(req.system ?? "").length + JSON.stringify(req.messages).length + JSON.stringify(req.tools).length) / 4);
+    const scout = (n, req) => ({ blocks: [...search("Arvento Drives news", [{ url: SCEN.s2.sources[0].url, title: "Source" }]), tool("submit_signals", { signals: [] })], stop: "tool_use", usage: { input_tokens: own(req) + 12000 * usesOf(req), output_tokens: 3000, web_search_requests: usesOf(req) } });
+    const p = await livePage({ script: scripted(answers("s2", "en"), { usage, scout }), expect: PRESET_EXPECT[preset] });
+    await toDialog(p.page);
+    await startRun(p.page, { preset, research: true, cap });
+    await until(p.page, ["check"]);
+    await p.page.click("#btn-cta");
+    const s = await until(p.page, ["decide", "stopped", "done"]);
+    const scoutReq = p.fake.requests.find((r) => r.step === "research")?.req;
+    check(scoutReq && usesOf(scoutReq) >= 1 && usesOf(scoutReq) < 5, `${preset}, at €${cap} the Scout asks for ${scoutReq ? usesOf(scoutReq) : "no"} searches, not five: more could pass the cap once their pages are counted`);
+    check(s.live.spentEur <= cap, `${preset}, with research on, what was spent (€${s.live.spentEur.toFixed(4)}) stays within the €${cap} cap (${s.live.status}${s.live.stop ? `, stopped by the ${s.live.stop.reason} before ${s.live.stop.step}` : ""})`);
+    await closePage(p, `${preset}, research at the cap`);
+  }
   // The meter: usage times price, plus $0.01 a search, at 0.894.
   {
     const usages = [
@@ -271,13 +292,16 @@ async function ac11() {
     for (const [quad, value] of [["strengths", `Contact ${address}`], ["weaknesses", "IBAN DE89 3704 0044 0532 0130 00"], ["threats", "Strictly confidential: pricing"], ["opportunities", "Internal processes are slow"]]) {
       await q.page.fill(`#add-${quad}`, value);
       await q.page.press(`#add-${quad}`, "Enter");
+      // The page puts the focus back on this field a frame later; the next fill waits for it (CI is slow).
+      await q.page.waitForFunction((id) => document.activeElement?.id === id, `add-${quad}`, { timeout: 5000 });
     }
     await q.page.click("#btn-cta");
     await q.page.waitForSelector("#live-dialog[open]");
     const items = await q.page.$$eval("#live-warning-list li", (li) => li.map((x) => x.textContent));
     const where = (q) => T("en", "d.warn.in.quadrant", { quadrant: q });
     const want = [T("en", "d.warn.email", { where: where("Strengths") }), T("en", "d.warn.iban", { where: where("Weaknesses") }), T("en", "d.warn.label", { where: where("Threats") }), T("en", "d.warn.phone", { where: EN["d.warn.in.description"] })];
-    check(!(await q.page.$eval("#live-warning", (w) => w.hidden)) && want.every((w) => items.includes(w)) && items.length === 4, `the warning lists the e-mail address, the IBAN, the classification and the phone number with their fields, and not "Internal processes are slow" (${items.length} found)`);
+    const entered = await q.page.$$eval(".swot--form .vc-framework__area", (areas) => areas.map((a) => `${a.dataset.quad}: ${[...a.querySelectorAll("input")].map((i) => i.value).filter(Boolean).join(" | ")}`));
+    check(!(await q.page.$eval("#live-warning", (w) => w.hidden)) && want.every((w) => items.includes(w)) && items.length === 4, `the warning lists the e-mail address, the IBAN, the classification and the phone number with their fields, and not "Internal processes are slow" (${items.length} found${want.every((w) => items.includes(w)) ? "" : `: ${items.join("; ")}; the form holds ${entered.join("; ")}`})`);
     await q.page.fill("#live-key", MOCK_KEY);
     await q.page.check("#live-ack");
     check(!(await q.page.$eval("#live-start", (b) => b.disabled)), "it warns and does not block");
@@ -379,6 +403,21 @@ async function ac18() {
   check(cards.length === base.complete.items.length && cards.every((c) => c.ai === "AI" && /^Basis: .+/.test(c.basis) && /^Confidence: (high|medium|low)$/.test(c.conf)), `each of the ${cards.length} AI items says AI, what it rests on and how sure it is`);
   const gridAi = await p.page.$$eval('.swot .vc-item[data-source="ai"]', (els) => els.map((e) => e.querySelector(".vc-item__state--source")?.textContent.trim()));
   check(gridAi.length === cards.length && gridAi.every((x) => x === "AI"), "in the grid too, every AI item carries the word AI");
+  check((await text(p.page, ".check-public")) === "Public information only: never enter confidential, personal or otherwise protected data.", "where the person can edit the AI's items, the panel says: public information only");
+  // An edit goes to the agents that follow: it gets the Start form's look for private data, as a warning.
+  await p.page.click("#edit-s4");
+  // The address is put together here, so no file of the repository carries one (tests/hygiene.mjs).
+  await p.page.fill("#edit-input-s4", `Service desk at ${["service", "arvento.example"].join("@")} answers within the hour`);
+  await p.page.press("#edit-input-s4", "Enter");
+  const warn = await text(p.page, "#warn-s4");
+  check(warn === "Usually private: an e-mail address in your edit. Edit it again, or keep it only if it is public.", `an edit with an e-mail address gets a warning under the item ("${warn}")`);
+  await p.page.click("#edit-s4");
+  await p.page.press("#edit-input-s4", "Escape");
+  check(!!(await p.page.$("#warn-s4")), "Cancel keeps the warning while the edit stays");
+  await p.page.click("#edit-s4");
+  await p.page.fill("#edit-input-s4", base.complete.items.find((i) => i.quadrant === "strengths").text);
+  await p.page.press("#edit-input-s4", "Enter");
+  check(!(await p.page.$("#warn-s4")) && !(await p.page.$('.ai-item[data-id="s4"] .check__edited')), "back to the AI's words, the warning and the edit are gone");
   await p.page.click("#remove-o3");
   check(await p.page.$('.swot .vc-item[data-id="o3"][data-status="removed"]') && (await text(p.page, ".check-count")).includes("3 kept, 1 removed"), "Remove strikes the item through, marked Removed");
   await p.page.click("#undo-o3");
@@ -397,6 +436,33 @@ async function ac18() {
   check(!sent.has("t3") && sent.get("t4")?.text === "Security reporting duties for drives with software" && sent.has("o3") && sent.has("s4"), "and the AI's items as the person left them: t3 removed, t4 edited, o3 and s4 kept");
   check(s.live.status === "decide", "the run goes on with that SWOT");
   await closePage(p, "check");
+  // The last item of a side stays at the check: the factor tables need one inside and one outside the
+  // company (review finding 12). The person enters nothing outside; the Completer adds three items to each
+  // external field; removing them all keeps the last, with a sentence that says why.
+  {
+    const a = answers("s2", "en");
+    const extra = (quadrant, texts) => texts.map((text) => ({ quadrant, text, basis: "Assumption: a test item", confidence: "low" }));
+    a.complete = { ...a.complete, items: [a.complete.items[0], ...extra("opportunities", ["Export to Nordic food plants", "Retrofit kits for older lines", "Leasing for small machine builders"]), ...extra("threats", ["Steel prices swing with tariffs", "A rival buys a sensor maker", "Customers delay new lines"])] };
+    const q = await livePage({ script: scripted(a) });
+    await q.page.click("#btn-live");
+    await q.page.selectOption("#live-fill", "s2");
+    await q.page.click("#live-fill-go");
+    await filledIn(q.page);
+    for (const quad of ["opportunities", "threats"]) {
+      while (await q.page.$(`.vc-framework__area[data-quad="${quad}"] .live-item__remove`)) await q.page.click(`.vc-framework__area[data-quad="${quad}"] .live-item__remove`);
+    }
+    await q.page.click("#btn-cta");
+    await q.page.waitForSelector("#live-dialog[open]");
+    await startRun(q.page);
+    await until(q.page, ["check", "stopped"]);
+    const external = await q.page.$$eval(".ai-item", (els) => els.filter((e) => /Opportunit|Threat/.test(e.querySelector(".ai-item__quad")?.textContent || "")).map((e) => e.dataset.id));
+    for (const id of external) await q.page.click(`#remove-${id}`);
+    const last = external[external.length - 1];
+    const note = await text(q.page, `#keep-${last}`);
+    const removed = await q.page.$$eval(".ai-item.is-removed", (els) => els.map((e) => e.dataset.id));
+    check(external.length === 6 && removed.length === 5 && !removed.includes(last) && note === "This is the last item outside the company, so it stays: the factor tables need one item on each side.", `removing every item outside the company keeps the last one with a sentence (${removed.length} of ${external.length} removed; "${note}")`);
+    await closePage(q, "last item of a side");
+  }
   // A Completer that repeats a person's item is refused and repaired; it never changes one.
   {
     const bad = clone(base.complete);
@@ -470,6 +536,24 @@ async function ac02() {
   const held = await p.page.$eval("#live-key-current", (c) => !c.hidden);
   check(after.mode === "simulation" && after.live === null && form === "" && !held, "Clear everything, once confirmed, forgets the key, the form and the run and goes back to the simulation");
   await closePage(p, "nothing kept");
+  // Clear everything while a request runs: the request ends later and changes nothing, without an error
+  // (review finding 14).
+  {
+    let release = null;
+    const held = new Promise((r) => { release = r; });
+    const q = await livePage({ script: scripted(answers("s2", "en")), hold: (n) => (n === 1 ? held : null) });
+    await toDialog(q.page);
+    await startRun(q.page);
+    await until(q.page, ["working"]);
+    await q.page.click("#btn-clear");
+    await q.page.waitForSelector("#clear-dialog[open]");
+    await q.page.click("#clear-confirm");
+    release();
+    await q.page.waitForTimeout(600);
+    const s = await state(q.page);
+    check(s.mode === "simulation" && s.live === null, `Clear everything while the Completer works ends the run; its late answer changes nothing (${s.mode}, ${JSON.stringify(s.live)})`);
+    await closePage(q, "clear while a request runs");
+  }
 }
 
 // ---- SCREENS -------------------------------------------------------------------------------------------
@@ -486,7 +570,8 @@ async function screens() {
       const empty = await p.page.$$eval(".swot--form .vc-framework__area", (areas) => areas.map((a) => ({ q: a.querySelector(".vc-framework__question")?.textContent, e: a.querySelector(".vc-framework__empty")?.textContent })));
       check(empty.length === 4 && empty.every((x) => x.q && x.e === L["q.live.empty"]), `${lang}: each empty field shows its question and "${L["q.live.empty"]}"`);
       await p.page.selectOption("#live-fill", "s2");
-      await p.page.waitForFunction(() => document.getElementById("live-name")?.value);
+      await p.page.click("#live-fill-go");
+      await filledIn(p.page);
       await p.page.click("#btn-cta");
       await p.page.waitForSelector("#live-dialog[open]");
       await startRun(p.page);
@@ -534,6 +619,26 @@ async function save() {
   for (const lang of ["en", "de"]) {
     const p = await livePage({ lang, script: scripted(answers("s2", lang), { think: true }) });
     await wholeRun(p.page);
+    // A new choice after the summary: Adopt takes it without another request and opens the Summary with its
+    // figures; the saved run holds it (review finding 8).
+    {
+      const sent = p.fake.requests.length;
+      const first = (await state(p.page)).adopted;
+      await p.page.click("#btn-back");
+      await p.page.waitForFunction(() => window.__swot.state().step === 4);
+      await p.page.click(".tows-card input[type=checkbox]:not(:checked)");
+      await p.page.click("#btn-cta");
+      await p.page.waitForFunction(() => window.__swot.state().step === 5, null, { timeout: 5000 }).catch(() => {});
+      const s = await state(p.page);
+      check(s.step === 5 && s.adopted.length === first.length + 1 && s.live.status === "done" && p.fake.requests.length === sent, `${lang}: after the summary, Adopt takes a new choice (${first.join(", ")} to ${s.adopted.join(", ")}) without another request and opens the Summary`);
+    }
+    const chosenNow = (await state(p.page)).adopted;
+    // The Writer is not told the choice, so its text holds for the new one too (review, new problem A).
+    const writer = p.fake.requests.find((r) => r.step === "summary")?.req;
+    const writerInput = writer ? JSON.parse(writer.messages[0].content) : null;
+    check(writerInput && writerInput.strategies.length > 0 && writerInput.strategies.every((s) => !("chosen" in s)) && /say neither which nor how many strategies are chosen/.test(JSON.stringify(writer.system)), `${lang}: the Writer sees the strategies without the choice and is told to write for any choice`);
+    const followers = ["left", "upside", "ife.after", "efe.after", "zone.after"];
+    check(writerInput && followers.every((k) => writerInput.facts[k] === "follows the choice") && writerInput.facts.at_stake && writerInput.facts.at_stake !== "follows the choice", `${lang}: the facts that follow the choice reach the Writer without their values; the others with theirs (at stake ${writerInput?.facts.at_stake})`);
     check(await p.page.$("#btn-save-run") && (await text(p.page, "#btn-save-run")).includes(DICT[lang]["s.sum.save"]), `${lang}: the Summary of a live run offers "${DICT[lang]["s.sum.save"]}"`);
     const [download] = await Promise.all([p.page.waitForEvent("download"), p.page.click("#btn-save-run")]);
     const file = await readFile(await download.path(), "utf8");
@@ -541,6 +646,7 @@ async function save() {
     const problems = scenarioProblems(rec, { today: new Date().toISOString().slice(0, 10) });
     check(/^swot-run-arvento-drives-\d{4}-\d{2}-\d{2}\.json$/.test(download.suggestedFilename()) && !problems.length && rec.language === lang && rec.source === "live", `${lang}: ${download.suggestedFilename()} holds the run in the scenario format, which the scenario rules accept for ${lang}${problems.length ? `: ${problems.slice(0, 3).join("; ")}` : ""}`);
     check(!/sk-ant-/.test(file) && !/"type"\s*:\s*"thinking"|"signature"/.test(file) && rec.run.requests === 5 && rec.run.audit.length === 5, `${lang}: without key or thinking, with each request's usage for the log`);
+    check([...rec.recorded_choice].sort().join() === [...chosenNow].sort().join() && [...rec.decision.chosen].sort().join() === [...chosenNow].sort().join(), `${lang}: the saved run holds the new choice (${rec.recorded_choice.join(", ")})`);
     await closePage(p, `${lang} save`);
 
     // The player plays the saved run, as data/scenarios/ would hold it.
@@ -565,6 +671,36 @@ async function save() {
     check(efe === f.efe.after.value.toFixed(2).replace(".", lang === "de" ? "," : "."), `${lang}: and the engine's figures for the recorded choice (response to the market ${efe})`);
     await ctx.close();
   }
+  await keyTyped();
+}
+
+// A key typed into the form by mistake: the warning names it, and no download carries it (review finding 11).
+async function keyTyped() {
+  const key = ["sk-ant-api03", "TYPEDBYMISTAKE0123456789"].join("-");
+  const p = await livePage({ script: scripted(answers("s2", "en")) });
+  await p.page.click("#btn-live");
+  await p.page.selectOption("#live-fill", "s2");
+  await p.page.click("#live-fill-go");
+  await filledIn(p.page);
+  await p.page.fill("#live-line", `Drives and gearboxes, key ${key}`);
+  await p.page.fill("#item-strengths-0", `Quality, key ${key}`);
+  await p.page.click("#btn-cta");
+  await p.page.waitForSelector("#live-dialog[open]");
+  const items = await p.page.$$eval("#live-warning-list li", (li) => li.map((x) => x.textContent));
+  check(items.includes(T("en", "d.warn.key", { where: EN["d.warn.in.description"] })) && items.includes(T("en", "d.warn.key", { where: T("en", "d.warn.in.quadrant", { quadrant: "Strengths" }) })), `a key typed into the line about the company and into a strength is in the warning (${items.join("; ")})`);
+  await startRun(p.page);
+  await until(p.page, ["check"]);
+  await p.page.click("#btn-cta");
+  await until(p.page, ["decide"]);
+  await p.page.click("#btn-cta");
+  await until(p.page, ["done"]);
+  const [download] = await Promise.all([p.page.waitForEvent("download"), p.page.click("#btn-save-run")]);
+  const file = await readFile(await download.path(), "utf8");
+  await p.page.click("#rp-open");
+  await p.page.waitForSelector("#report-dialog[open]");
+  const report = await text(p.page, "#report");
+  check(!file.includes(key) && file.includes("sk-ant-[REDACTED]") && !report.includes(key) && report.includes("sk-ant-[REDACTED]"), "the saved run and the report show it redacted, so the PDF and the HTML file carry none");
+  await closePage(p, "key typed");
 }
 
 // ---- run ------------------------------------------------------------------------------------------------

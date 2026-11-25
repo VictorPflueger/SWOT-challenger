@@ -131,15 +131,23 @@ check(sameChoice(["R1", "R2"], ["R2", "R1"]) && !sameChoice(["R1"], ["R1", "R2"]
 {
   const w = worstCaseEur({ modelId: "claude-haiku-5-5", inputTokens: 3000, maxTokens: 8000 });
   const wS = worstCaseEur({ modelId: "claude-sonnet-5-5", inputTokens: 3000, maxTokens: 8000, searches: 5 });
-  check(near(w, ((3000 * 0.1 + 8000 * 0.5) / 1e6) * RATE) && near(wS, ((3000 * 2 + 8000 * 10) / 1e6 + 5 * 0.01) * RATE), `a request's worst case: input times the input price plus max_tokens times the output price plus $0.01 a search, at ${RATE} (Haiku €${w.toFixed(6)}, Sonnet with five searches €${wS.toFixed(6)})`);
+  check(near(w, ((3600 * 0.1 + 8000 * 0.5) / 1e6) * RATE) && near(wS, (((3600 + 5 * 12000) * 2 + 8000 * 10) / 1e6 + 5 * 0.01) * RATE), `a request's worst case: its input and a fifth more for the estimate's error, with 12,000 tokens of pages a search, times the input price, plus max_tokens times the output price, plus $0.01 a search, at ${RATE} (Haiku €${w.toFixed(6)}, Sonnet with five searches €${wS.toFixed(6)})`);
   const full = planRequest({ modelId: "claude-sonnet-5-5", step: "challenge", inputTokens: 3000, spentEur: 0, capEur: 0.5 });
   const lowered = planRequest({ modelId: "claude-sonnet-5-5", step: "challenge", inputTokens: 3000, spentEur: 0, capEur: 0.05 });
   const stopped = planRequest({ modelId: "claude-sonnet-5-5", step: "challenge", inputTokens: 3000, spentEur: 0.03, capEur: 0.05 });
   check(full.ok && full.maxTokens === 8000 && !full.lowered && lowered.ok && lowered.lowered && lowered.maxTokens === 3000 && !stopped.ok && stopped.reason === "cap", "a request that fits the cap goes with 8,000 tokens; one that fits only with fewer goes with the step's minimum; one that fits not even then does not start");
-  const long = planRequest({ modelId: "claude-haiku-5-5", step: "assess", inputTokens: 100001, spentEur: 0, capEur: 3 });
-  const atLine = planRequest({ modelId: "claude-haiku-5-5", step: "assess", inputTokens: 100000, spentEur: 0, capEur: 3 });
+  const long = planRequest({ modelId: "claude-haiku-5-5", step: "assess", inputTokens: 83334, spentEur: 0, capEur: 3 });
+  const atLine = planRequest({ modelId: "claude-haiku-5-5", step: "assess", inputTokens: 83333, spentEur: 0, capEur: 3 });
   const sonnetLong = planRequest({ modelId: "claude-sonnet-5-5", step: "assess", inputTokens: 100001, spentEur: 0, capEur: 3 });
-  check(!long.ok && long.reason === "long" && atLine.ok && sonnetLong.ok, "Haiku 5.5 refuses a request estimated above 100,000 input tokens, where its prices rise fivefold; at 100,000 it goes, and Sonnet has no such line");
+  check(!long.ok && long.reason === "long" && atLine.ok && sonnetLong.ok, "Haiku 5.5 refuses a request that, a fifth above its estimate, could pass 100,000 input tokens, where its prices rise fivefold (83,334 estimated); 83,333 goes, and Sonnet has no such line");
+  // Search results come back as input: five searches' pages can carry a Haiku request past the line, four not.
+  const paged5 = planRequest({ modelId: "claude-haiku-5-5", step: "research", inputTokens: 35000, spentEur: 0, capEur: 3, searches: 5 });
+  const paged4 = planRequest({ modelId: "claude-haiku-5-5", step: "research", inputTokens: 35000, spentEur: 0, capEur: 3, searches: 4 });
+  check(!paged5.ok && paged5.reason === "long" && paged4.ok, "with research, the pages each search may return count toward Haiku's 100,000-token line: 35,000 tokens and five searches are refused, four searches go");
+  // With €0.09 left of a €0.10 cap on Sonnet 5.5, two searches' worst case does not fit, one does: the Scout searches once.
+  const two = planRequest({ modelId: "claude-sonnet-5-5", step: "research", inputTokens: 4000, spentEur: 0.01, capEur: 0.1, searches: 2 });
+  const one = planRequest({ modelId: "claude-sonnet-5-5", step: "research", inputTokens: 4000, spentEur: 0.01, capEur: 0.1, searches: 1 });
+  check(!two.ok && two.reason === "cap" && one.ok && one.lowered, `with €0.09 left of a €0.10 cap on Sonnet 5.5, two searches' worst case (€${two.worstEur.toFixed(4)}) does not fit and one (€${one.worstEur.toFixed(4)}, at the step's minimum) does`);
   check(tokensIn("abcdefgh") === 2 && tokensIn({ a: "bc" }) === 3, "the budget counts about four characters a token, as the estimate does");
 }
 
@@ -165,7 +173,7 @@ check(sameChoice(["R1", "R2"], ["R2", "R1"]) && !sameChoice(["R1"], ["R1", "R2"]
     [`Contact ${at} for the plan`, "email"], ["+49 30 12345678", "phone"], ["Call 030 1234567 now", "phone"], ["(030) 1234 5678", "phone"],
     ["IBAN DE89 3704 0044 0532 0130 00", "iban"], ["DE89370400440532013000", "iban"], ["This plan is confidential", "label"],
     ["For internal use only", "label"], ["Streng vertraulich: Zahlen", "label"], ["Nur intern: Zahlen", "label"], ["[Intern] Zahlen", "label"],
-    ["Classification: internal", "label"], ["Nicht zur Weitergabe", "label"]
+    ["Classification: internal", "label"], ["Nicht zur Weitergabe", "label"], ["Our key is sk-ant-api03-abcdefghijklmnop", "key"]
   ];
   const clean = ["Internal processes are slow", "interne Prozesse sind langsam", "Wissen wird intern nicht geteilt", "Intern hires grow", "Revenue of 2,000,000 in 2026", "ISO 14083 and EN 50160", "Ships over 5,000 GT", "Order 1234567 shipped", "A 24/7 service desk", "DE89 3704 0044 0532 0130 01", "Market share 30 %"];
   const missed = found.filter(([text, kind]) => !privateKinds(text).includes(kind));
