@@ -137,20 +137,29 @@ export function pricingProblems(im, sector) {
 
 /**
  * The last resort once the Analyst's repair is spent (1.0.1): each assessment whose figure still breaks a
- * pricing rule becomes "not priced", with no KPI and zero euros, so one bad figure no longer stops a run
- * that is otherwise sound. A figure the Analyst gave takes the tool's reason, `words.setAside`; an issue it
- * left unpriced keeps its own reason, or `words.noReason`. Nothing else changes: weights, ratings and a
- * missing or doubled assessment stay the guards' to refuse. Returns { answer, setAside: issue ids }.
+ * pricing rule, or the contract inside that one assessment (negative euros, a fourth KPI, a text over its
+ * limit), becomes "not priced", with no KPI and zero euros, so one bad figure no longer stops a run that is
+ * otherwise sound. A figure the Analyst gave takes the tool's reason, `words.setAside`; an issue it left
+ * unpriced keeps its own reason where that fits, or `words.noReason` when it gave none. Nothing else
+ * changes: weights, ratings and a missing or doubled assessment stay the guards' to refuse.
+ * Returns { answer, setAside: the ids of the issues whose figure was left out }.
  */
 export function setAsidePricing(answer, { sector }, words) {
   const setAside = [];
   const impacts = answer.impacts.map((im) => {
-    if (!pricingProblems(im, sector).length) return im;
-    if (im.monetisable) setAside.push(im.issue);
-    const reason = im.monetisable ? words.setAside : im.reason || words.noReason;
-    return { ...im, monetisable: false, reason, kpis: [], eur_year_low: 0, eur_year_high: 0, basis: "" };
+    if (!impactFaulty(im, sector)) return im;
+    if (im.monetisable !== false) setAside.push(im.issue);
+    const own = im.monetisable === false && typeof im.reason === "string" && validate(im.reason, SCHEMAS.Impact.properties.reason).valid ? im.reason : "";
+    const reason = im.monetisable === false && !im.reason ? words.noReason : own || words.setAside;
+    return { issue: im.issue, monetisable: false, reason, kpis: [], eur_year_low: 0, eur_year_high: 0, basis: "", confidence: im.confidence };
   });
   return { answer: { ...answer, impacts }, setAside };
+}
+
+/** True when one assessment breaks its own contract or a pricing rule. */
+function impactFaulty(im, sector) {
+  if (!validate(im, SCHEMAS.Impact, SCHEMAS).valid) return true;
+  return pricingProblems(im, sector).length > 0;
 }
 
 /**

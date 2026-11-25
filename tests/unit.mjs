@@ -260,6 +260,11 @@ check(sameChoice(["R1", "R2"], ["R2", "R1"]) && !sameChoice(["R1"], ["R1", "R2"]
     `${lang}: a priced issue without a KPI, twice, is set aside after the repair and the run goes on to the summary; ${victim} reads "${im.reason}", the audit keeps both problems, and the saved run passes the scenario checker${saved.length ? ` (it does not: ${saved.slice(0, 2).join("; ")})` : ""}`);
   }
   {
+    // A fault only the contract in code catches, inside one assessment: negative euros, in the answer and the repair.
+    const r = await liveRun("en", (step, n, a) => { if (step !== "assess") return null; const x = JSON.parse(JSON.stringify(a.assess)); x.impacts.find((im) => im.issue === victimOf(a)).eur_year_low = -200000; return x; });
+    check(r.snap.status === "done" && r.sent === "complete,challenge,assess,assess,strategise,summary" && JSON.stringify(r.snap.setAside) === JSON.stringify([victimOf(r.a)]) && r.snap.audit.filter((x) => x.step === "assess").every((x) => x.problems.some((p) => /Assessment contract: impacts\[\d\]\.eur_year_low/.test(p))), `negative euros, twice, are set aside too, and the run goes on to the summary (${r.sent})`);
+  }
+  {
     // No repair left: the Completer and the Red team each needed one, so the Analyst's figure goes at once.
     const r = await liveRun("en", (step, n, a) => {
       if (step === "complete" && n === 1) return { ...a.complete, sector: "banking" };

@@ -185,9 +185,9 @@ export function createLiveRun({ recording, settings: initialSettings, capEur: in
    * issues show as not priced (1.0.1). Null: nothing, the run stops.
    */
   function settle(step, r, ctx) {
-    if (!r.answer || schemaProblems(step, r.answer).length) return null;
-    if (step === "summary") return { answer: r.answer, unchecked: r.problems };
-    if (step !== "assess") return null;
+    if (!r.answer) return null;
+    if (step === "summary") return schemaProblems(step, r.answer).length ? null : { answer: r.answer, unchecked: r.problems };
+    if (step !== "assess" || !Array.isArray(r.answer.impacts)) return null;
     const s = setAsidePricing(r.answer, ctx, { setAside: t("s.assess.setaside", null, lang), noReason: t("h.not.priced.none", null, lang) });
     return answerProblems(step, s.answer, ctx).length ? null : s;
   }

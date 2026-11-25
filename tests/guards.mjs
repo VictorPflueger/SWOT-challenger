@@ -42,7 +42,12 @@ const PRICING = [
   ["a KPI that goes down while its change goes up", (a) => { Object.assign(priced(a).kpis[0], { direction: "down", change_low: 1, change_high: 3 }); }, /goes down, but its change says otherwise/],
   ["low above high", (a) => { const im = priced(a); [im.eur_year_low, im.eur_year_high] = [im.eur_year_high + 10, im.eur_year_low]; }, /runs backwards/],
   ["an issue not priced that carries euros", (a) => { unpriced(a).eur_year_high = 50000; }, /is not priced, so it gives a reason, no KPI and zero euros/],
-  ["an issue not priced without a reason", (a) => { unpriced(a).reason = ""; }, /is not priced, so it gives a reason, no KPI and zero euros/]
+  ["an issue not priced without a reason", (a) => { unpriced(a).reason = ""; }, /is not priced, so it gives a reason, no KPI and zero euros/],
+  // Faults inside one assessment that only the contract in code catches, since the wire cannot hold them.
+  ["negative euros on a priced issue", (a) => { priced(a).eur_year_low = -200000; }, /Assessment contract: impacts\[\d\]\.eur_year_low: must be at least 0/],
+  ["a fourth KPI", (a) => { const im = priced(a); im.kpis = [0, 1, 2, 3].map(() => ({ ...im.kpis[0] })); }, /Assessment contract: impacts\[\d\]\.kpis: must have at most 3 items/],
+  ["a KPI name over 60 characters", (a) => { priced(a).kpis[0].name = "n".repeat(61); }, /Assessment contract: .*name: must have at most 60 characters/],
+  ["an issue not priced whose reason runs over 140 characters", (a) => { unpriced(a).reason = "r".repeat(141); }, /Assessment contract: .*reason: must have at most 140 characters/]
 ];
 
 /** [step, what, change, the words the refusal must hold] */
@@ -99,8 +104,10 @@ for (const [what, change] of PRICING) {
   const s = setAsidePricing(answer, ctx.assess, WORDS);
   const changed = s.answer.impacts.filter((x, i) => JSON.stringify(x) !== JSON.stringify(before[i]));
   const im = changed[0];
-  const wasPriced = im && before.find((x) => x.issue === im.issue).monetisable;
-  const reasonOk = im && (wasPriced ? im.reason === WORDS.setAside : im.reason === (before.find((x) => x.issue === im.issue).reason || WORDS.noReason));
+  const was = im && before.find((x) => x.issue === im.issue);
+  const wasPriced = !!was && was.monetisable !== false;
+  const want = !was ? null : wasPriced ? WORDS.setAside : !was.reason ? WORDS.noReason : was.reason.length <= 140 ? was.reason : WORDS.setAside;
+  const reasonOk = im && im.reason === want;
   check(answerProblems("assess", s.answer, ctx.assess).length === 0 && changed.length === 1 && im.monetisable === false && im.kpis.length === 0 && im.eur_year_low === 0 && im.eur_year_high === 0 && reasonOk && JSON.stringify(s.setAside) === JSON.stringify(wasPriced ? [im.issue] : []),
     `the last resort settles ${what}: ${im ? `${im.issue} becomes not priced ("${im.reason}")${wasPriced ? " and is listed as set aside" : ""}` : "nothing changed"}, every other assessment untouched`);
 }
@@ -112,7 +119,9 @@ const STOPS = [
   ["an issue without its assessment", (a) => { a.impacts.pop(); }],
   ["an issue assessed twice", (a) => { a.impacts.push(clone(a.impacts[0])); }],
   ["an assessment of an issue that does not exist", (a) => { a.impacts.push({ ...clone(a.impacts[0]), issue: "I9" }); }],
-  ["a priced issue without a KPI next to a weight that misses 1", (a) => { priced(a).kpis = []; a.factors.filter((f) => /^[ot]/.test(f.item)).forEach((f) => { f.weight *= 1.3; }); }]
+  ["a priced issue without a KPI next to a weight that misses 1", (a) => { priced(a).kpis = []; a.factors.filter((f) => /^[ot]/.test(f.item)).forEach((f) => { f.weight *= 1.3; }); }],
+  ["a rating of 5, which only the contract catches", (a) => { a.factors[0].rating = 5; }],
+  ["a weight's reason over 140 characters", (a) => { a.factors[0].reason = "w".repeat(141); }]
 ];
 for (const [what, change] of STOPS) {
   const answer = clone(A.assess);
