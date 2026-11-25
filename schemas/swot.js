@@ -2,8 +2,9 @@
 // Swot, Factor, Decision, Scenario, Recording, RunEvent, AuditEvent) and the answers each agent returns (Completion,
 // Signals, Issues, Assessment, Strategies, Summary). The answers' schemas keep every limit the person can
 // read; js/wire.js strips what the API refuses before a request is sent, and js/schema.js and the guards
-// check those limits in code. Every field of an answer is required and none has two types, so a request
-// stays far inside the API's limits of 24 optional and 16 union-typed parameters (tests/schemas.mjs).
+// check those limits in code. Every field of an answer is required and none has two types; only the
+// Analyst's impact goes out as two shapes (WIRE), so a request stays far inside the API's limits of 24
+// optional and 16 union-typed parameters (tests/schemas.mjs).
 // "$ref": "Name.json" names another schema of SCHEMAS.
 
 const QUADRANT = { enum: ["strengths", "weaknesses", "opportunities", "threats"] };
@@ -77,26 +78,57 @@ const Issue = object({
 });
 const Issues = object({ issues: list({ $ref: "Issue.json" }, 8, 1) });
 
+/** One KPI an issue moves: from the sector's library, or new with a full definition. */
+const KpiEffect = object({
+  id: { type: "string", pattern: "^[a-z_]+\\.[a-z0-9_]+$" },
+  name: text(60),
+  unit: text(30),
+  direction: { enum: ["up", "down"] },
+  change_low: { type: "number" },
+  change_high: { type: "number" },
+  definition: { type: "string", maxLength: 200, description: "Empty for a KPI of the library; the full definition for a new one." },
+  basis: text(140)
+});
 /** The Analyst's answer per issue: KPI effects and a euro range a year, or not monetisable with a reason. */
 const Impact = object({
   issue: ISSUE_ID,
   monetisable: { type: "boolean" },
   reason: { type: "string", maxLength: 140, description: "Why the issue is not monetisable; empty when it is." },
-  kpis: list(object({
-    id: { type: "string", pattern: "^[a-z_]+\\.[a-z0-9_]+$" },
-    name: text(60),
-    unit: text(30),
-    direction: { enum: ["up", "down"] },
-    change_low: { type: "number" },
-    change_high: { type: "number" },
-    definition: { type: "string", maxLength: 200, description: "Empty for a KPI of the library; the full definition for a new one." },
-    basis: text(140)
-  }), 3),
+  kpis: list(KpiEffect, 3),
   eur_year_low: EUR,
   eur_year_high: EUR,
   basis: { type: "string", maxLength: 200 },
   confidence: CONFIDENCE
 });
+/**
+ * The same answer as the API's grammar receives it (1.0.1): two shapes, so a priced issue cannot go out
+ * without a KPI or with a reason, and one that is not priced cannot carry euros. The contract above stays
+ * one shape, so code reads it and the guards' sentences stay plain; every answer of this form passes it.
+ */
+const ImpactOnTheWire = {
+  anyOf: [
+    object({
+      issue: ISSUE_ID,
+      monetisable: { const: true, description: "Priced: the KPIs it moves and the euros a year they come to." },
+      reason: { const: "", description: "Empty: a priced issue needs no reason." },
+      kpis: list(KpiEffect, 3, 1),
+      eur_year_low: EUR,
+      eur_year_high: EUR,
+      basis: { type: "string", maxLength: 200 },
+      confidence: CONFIDENCE
+    }),
+    object({
+      issue: ISSUE_ID,
+      monetisable: { const: false, description: "Not priced: why not, no KPI and zero euros." },
+      reason: text(140),
+      kpis: { type: "array", items: KpiEffect, description: "Empty: an issue that is not priced moves no KPI." },
+      eur_year_low: { type: "number", const: 0 },
+      eur_year_high: { type: "number", const: 0 },
+      basis: { type: "string", maxLength: 200 },
+      confidence: CONFIDENCE
+    })
+  ]
+};
 /** The Analyst's weight and rating for one item, after David's scales. */
 const Factor = object({ item: ITEM_ID, weight: { type: "number", minimum: 0, maximum: 1 }, rating: RATING, reason: text(140) });
 const Assessment = object({ impacts: list({ $ref: "Impact.json" }, 8), factors: list({ $ref: "Factor.json" }, 40, 4) });
@@ -222,6 +254,12 @@ const Recording = object({
 
 /** Every contract by name, for validate(value, SCHEMAS.X, SCHEMAS). */
 export const SCHEMAS = Object.freeze({ Item, Swot, Completion, Signal, Signals, Issue, Issues, Impact, Factor, Assessment, Strategy, Strategies, Summary, Decision, Scenario, Recording, RunEvent, AuditEvent });
+
+/**
+ * The contracts as requests send them, for toWire(SCHEMAS[REQUESTS[step]], WIRE) in js/wire.js: the same,
+ * but the Analyst's impact in its two shapes. The pipeline, the estimate and the stand-in all use this.
+ */
+export const WIRE = Object.freeze({ ...SCHEMAS, Impact: ImpactOnTheWire });
 
 /** The schema each request sends, by step (the Scout's as its tool's input schema). */
 export const REQUESTS = Object.freeze({ complete: "Completion", research: "Signals", challenge: "Issues", assess: "Assessment", strategise: "Strategies", summary: "Summary" });

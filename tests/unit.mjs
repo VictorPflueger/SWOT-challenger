@@ -16,7 +16,10 @@
 //               prompts included, within 1e-9;
 //   privacy     the private-data scan finds e-mail addresses, phone numbers, IBANs and classification
 //               labels in its samples and nothing in clean SWOT texts;
-//   api errors  every error the API can give reads as words and one next step, in English and German.
+//   api errors  every error the API can give reads as words and one next step, in English and German;
+//   last resort the Analyst's figures that still break a pricing rule after the repair are set aside and
+//               the run goes on to the summary, its saved recording passing the scenario checker; with no
+//               repair left they are set aside at once; any other broken rule still stops the run (1.0.1).
 // Prints UNIT OK. Usage: node tests/unit.mjs
 import fs from "node:fs";
 import path from "node:path";
@@ -34,6 +37,10 @@ import { worstCaseEur, planRequest, tokensIn } from "../js/budget.js";
 import { createCostTracker, usageCostUsd } from "../js/cost.js";
 import { privateKinds, privacyFindings } from "../js/privacy.js";
 import { apiMessage, webSearchOff } from "../js/api_messages.js";
+import { newRecording, createLiveRun, resolveSettings } from "../js/pipeline.js";
+import { zoneName } from "../js/format.js";
+import { scenarioProblems } from "../js/scenario_check.js";
+import { t } from "../js/i18n/index.js";
 import EN from "../js/i18n/en.js";
 import DE from "../js/i18n/de.js";
 
@@ -210,6 +217,68 @@ check(sameChoice(["R1", "R2"], ["R2", "R1"]) && !sameChoice(["R1"], ["R1", "R2"]
   }
   check(!bad.length, `all ${errors.length} kinds of API error read as words and one next step, in English and German${bad.length ? `: ${bad.join("; ")}` : ""}`);
   check(webSearchOff({ status: 400, message: "Web search is disabled for this organization." }) && !webSearchOff({ status: 400, message: "Your credit balance is too low" }), "the 400 for web search switched off is told apart from other 400s");
+}
+
+// ---- the Analyst's last resort (1.0.1) ----------------------------------------------------------------------
+{
+  const STEP_OF = new Map(["complete", "challenge", "assess", "strategise", "summary"].map((s) => [systemFor(s), s]));
+  /** S2 run live through js/pipeline.js on a scripted transport; fault(step, n, answers) may replace an answer. */
+  async function liveRun(lang, fault = () => null) {
+    const scen = scenarios.s2;
+    const a = JSON.parse(JSON.stringify(scen.answers[lang]));
+    for (const issue of a.challenge.issues) issue.evidence = [];
+    const count = {};
+    const sent = [];
+    const transport = async ({ body }) => {
+      const step = STEP_OF.get(body.system);
+      count[step] = (count[step] || 0) + 1;
+      sent.push(step);
+      const answer = fault(step, count[step], a) ?? a[step];
+      return { message: { content: [{ type: "text", text: JSON.stringify(answer) }], stop_reason: "end_turn", usage: { input_tokens: 3000, output_tokens: 1500 } } };
+    };
+    const items = Object.fromEntries(Object.entries(scen.entered).map(([q, list]) => [q, list.map((i) => i.text[lang])]));
+    const company = { name: scen.company.name, sector: scen.company.sector, country: scen.company.country, description: scen.company.description[lang] };
+    const run = createLiveRun({ recording: newRecording({ company, items, lang, today: scen.as_of, fictional: true }), settings: resolveSettings({ preset: "fast" }), capEur: 1, transport, retry: (fn) => fn(), key: () => `sk-ant-api03-${"x".repeat(40)}` });
+    await run.complete();
+    if (run.snapshot().status === "check") { run.applyCheck({}); await run.challenge(); }
+    if (run.snapshot().status === "decide") await run.summarise({ chosen: a.strategise.strategies.filter((x) => x.recommended).map((x) => x.id), zoneName });
+    return { run, snap: run.snapshot(), sent: sent.join(","), a };
+  }
+  const victimOf = (a) => [...a.assess.impacts].reverse().find((x) => x.monetisable).issue;
+  const noKpi = (a) => { const x = JSON.parse(JSON.stringify(a.assess)); x.impacts.find((im) => im.issue === victimOf(a)).kpis = []; return x; };
+  const today = new Date().toISOString().slice(0, 10);
+  for (const lang of ["en", "de"]) {
+    // Victor's run of 25 November 2026: the Analyst prices an issue without a KPI, and again in the repair.
+    const r = await liveRun(lang, (step, n, a) => (step === "assess" ? noKpi(a) : null));
+    const victim = victimOf(r.a);
+    const im = r.run.rec.answers[lang].assess.impacts.find((x) => x.issue === victim);
+    const audits = r.snap.audit.filter((x) => x.step === "assess");
+    const saved = scenarioProblems(r.run.toRecording(), { today });
+    check(r.snap.status === "done" && r.sent === "complete,challenge,assess,assess,strategise,summary" && r.snap.repairs === 1 && JSON.stringify(r.snap.setAside) === JSON.stringify([victim])
+      && im.monetisable === false && im.kpis.length === 0 && im.eur_year_high === 0 && im.reason === t("s.assess.setaside", null, lang)
+      && audits.length === 2 && audits.every((x) => x.problems.some((p) => p.startsWith(`${victim} is priced but moves no KPI`))) && !saved.length,
+    `${lang}: a priced issue without a KPI, twice, is set aside after the repair and the run goes on to the summary; ${victim} reads "${im.reason}", the audit keeps both problems, and the saved run passes the scenario checker${saved.length ? ` (it does not: ${saved.slice(0, 2).join("; ")})` : ""}`);
+  }
+  {
+    // A fault only the contract in code catches, inside one assessment: negative euros, in the answer and the repair.
+    const r = await liveRun("en", (step, n, a) => { if (step !== "assess") return null; const x = JSON.parse(JSON.stringify(a.assess)); x.impacts.find((im) => im.issue === victimOf(a)).eur_year_low = -200000; return x; });
+    check(r.snap.status === "done" && r.sent === "complete,challenge,assess,assess,strategise,summary" && JSON.stringify(r.snap.setAside) === JSON.stringify([victimOf(r.a)]) && r.snap.audit.filter((x) => x.step === "assess").every((x) => x.problems.some((p) => /Assessment contract: impacts\[\d\]\.eur_year_low/.test(p))), `negative euros, twice, are set aside too, and the run goes on to the summary (${r.sent})`);
+  }
+  {
+    // No repair left: the Completer and the Red team each needed one, so the Analyst's figure goes at once.
+    const r = await liveRun("en", (step, n, a) => {
+      if (step === "complete" && n === 1) return { ...a.complete, sector: "banking" };
+      if (step === "challenge" && n === 1) return { issues: a.challenge.issues.map((x, i) => (i === 1 ? { ...x, items: ["s9"] } : x)) };
+      return step === "assess" ? noKpi(a) : null;
+    });
+    check(r.snap.status === "done" && r.sent === "complete,complete,challenge,challenge,assess,strategise,summary" && r.snap.repairs === 2 && r.snap.setAside.length === 1, `with both repairs spent, a figure that breaks a pricing rule is set aside without a third repair, and the run goes on (${r.sent})`);
+  }
+  {
+    // The negative control: a rating that breaks David's scale is no figure's fault; the run stops as in 1.0.0.
+    const r = await liveRun("en", (step, n, a) => (step === "assess" ? { ...a.assess, factors: a.assess.factors.map((f) => (f.item === "s1" ? { ...f, rating: 2 } : f)) } : null));
+    check(r.snap.status === "stopped" && r.snap.stop?.reason === "invalid" && r.snap.stop.step === "assess" && r.snap.stop.problems.some((p) => /a strength is 3 or 4/.test(p)) && r.sent === "complete,challenge,assess,assess" && !r.snap.setAside.length,
+      `a strength rated 2 in the answer and the repair still stops the run at the Analyst (${r.sent}; "${r.snap.stop?.problems?.[0]}")`);
+  }
 }
 
 for (const [ok, what] of results) console.log(`${ok ? "PASS" : "FAIL"}  ${what}`);

@@ -1,7 +1,8 @@
 // A schema as the API takes it in output_config.format or a strict tool's input_schema (PLAN.md probe 7):
 // references inlined, every object closed with additionalProperties: false, and every keyword the API
 // answers with 400 taken out: numeric and length limits, array limits beyond minItems 0 or 1, oneOf, not,
-// formats outside its list and patterns with word boundaries, lookaround or back-references. A limit
+// formats outside its list and patterns with word boundaries, lookaround or back-references. refused()
+// also reports an anyOf beside type or properties and an enum or const that is not a scalar. A limit
 // taken out moves into the field's description, so the model still reads it; js/schema.js and the guards
 // check it in code. tests/schemas.mjs proves that no refused keyword survives.
 
@@ -85,6 +86,13 @@ export function refused(schema, path = "") {
   }
   const isObject = schema.type === "object" || schema.properties;
   if (isObject && schema.additionalProperties !== false) out.push(`${path || "/"}: additionalProperties is not false`);
+  // The structured outputs page, read on 25 November 2026: anyOf never beside type or properties, and enum
+  // and const hold only strings, numbers, booleans or null.
+  if (schema.anyOf && (schema.type !== undefined || schema.properties)) out.push(`${path || "/"}: anyOf beside type or properties`);
+  for (const key of ["enum", "const"]) {
+    const values = key === "enum" ? schema.enum : [schema.const];
+    if (Object.hasOwn(schema, key) && (!Array.isArray(values) || values.some((v) => v !== null && typeof v === "object"))) out.push(`${path || "/"}: ${key} with a value that is not a string, number, boolean or null`);
+  }
   return out;
 }
 

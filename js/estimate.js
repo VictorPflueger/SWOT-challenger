@@ -13,7 +13,7 @@
 import { DEFAULT_MODEL, FX_USD_EUR, RESEARCH } from "./config.js";
 import { usageCostUsd } from "./cost.js";
 import { toWire } from "./wire.js";
-import { SCHEMAS, REQUESTS } from "../schemas/swot.js";
+import { SCHEMAS, REQUESTS, WIRE } from "../schemas/swot.js";
 import { assemble, factsFor } from "./scenario.js";
 import { systemFor, inputFor } from "./prompts.js";
 import { zoneName } from "./format.js";
@@ -50,7 +50,7 @@ export function requestsOf(scenario, lang) {
     step,
     system: systemFor(step),
     input: inputFor(step, run, opts),
-    schema: toWire(SCHEMAS[REQUESTS[step]], SCHEMAS),
+    schema: toWire(SCHEMAS[REQUESTS[step]], WIRE),
     output: scenario.answers[lang][step]
   }));
 }
