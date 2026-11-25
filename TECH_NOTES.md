@@ -300,6 +300,7 @@ A run driven through `js/pipeline.js` reproduces it: when the Analyst answers th
 - **The prompt.** The Analyst reads that a euro range always rests on at least one KPI, and that a KPI going down changes by zero or less.
 - **The last resort.** Once the repair is spent, a figure that still breaks a pricing rule, or the contract within its own assessment (negative euros, a fourth KPI, a text over its limit), is set aside (`setAsidePricing` in `js/guards.js`). Its issue then reads "Not priced: The Analyst's estimate broke the rules, so code left it out" on the Assess step, in the report and in the handoff file, and the run goes on. An issue the Analyst left unpriced keeps its own reason. Weights, ratings and a missing or doubled assessment are not a figure's faults, so they still stop the run. A saved run's audit keeps every problem.
 - **The stand-in.** It now refuses any scripted answer that the API's grammar could not produce, so no test rests on an answer the real API cannot give.
+- **Vici and the Ideator.** `vici/` now holds Vici's main at `d04a318`, which adds the Prototype Ideator's pull request 50: a honeycomb keeps its columns on paper, and this tool draws none. CI now reads the handoff file with the Prototype Ideator's main at `62386d1`, its current release, and every file passes its reader.
 
 ### 14.3 Checked at source
 
